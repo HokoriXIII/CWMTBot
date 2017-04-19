@@ -1,10 +1,14 @@
 from telethon import TelegramClient, RPCError
+from telethon.telegram_client import Session
 import config
 
 
 class Client:
 
     def __init__(self, session):
+        session = Session.try_load_or_create_new(session)
+        session.server_address = '149.154.167.50'
+        session.port = 443
         self._tgClient = TelegramClient(session, config.API_ID, config.API_HASH)
         self._phone = ''
         self._code_requested = False
