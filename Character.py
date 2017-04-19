@@ -177,7 +177,7 @@ class Character:
         self.deserialize(self._config_file.read_text())
 
     def get_game_info(self):
-        profile = self._client.request_profile()
+        self._client.request_profile()
 
     def serialize(self):
         char_dict = {'name': self.name, 'prof': self.prof, 'stamina': self.stamina, 'level': self.level,
