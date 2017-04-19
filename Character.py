@@ -138,6 +138,7 @@ class Timers:
     lastArena = 0.0
     lastQuest = 0.0
     lastProfileRequest = 0.0
+    lastBattle = 0.0
     battlesHours = [0, 4, 8, 12, 16, 20]
 
 
