@@ -61,6 +61,8 @@ class Configuration:
     autoCraft = False
     autoEquip = False
     autoTrade = False
+    autoLevelUp = True
+    levelUpAtk = True   # Если True, то уровень будет вкачиваться в атаку, если False в защиту.
     adminUser = ''
     orderChat = ''
     orderUser = ''
@@ -70,7 +72,7 @@ class Configuration:
                      'autoDonate': self.autoDonate, 'donateTill': self.donateTill, 'autoPet': self.autoPet,
                      'autoCaptcha': self.autoCaptcha, 'autoCraft': self.autoCraft, 'autoEquip': self.autoEquip,
                      'autoTrade': self.autoTrade, 'adminUser': self.adminUser, 'orderChat': self.orderChat,
-                     'orderUser': self.orderUser}
+                     'orderUser': self.orderUser, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk}
         return conf_dict
 
     @staticmethod
@@ -97,6 +99,10 @@ class Configuration:
             conf.profit = conf_dict['profit']
         if 'foodInStock' in conf_keys:
             conf.foodInStock = conf_dict['foodInStock']
+        if 'autoLevelUp' in conf_keys:
+            conf.autoLevelUp = conf_dict['autoLevelUp']
+        if 'levelUpAtk' in conf_keys:
+            conf.levelUpAtk = conf_dict['levelUpAtk']
         return conf
 
 
