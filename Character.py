@@ -1,6 +1,7 @@
 from Client import Client
 from pathlib import Path
 import json, enum
+import time
 
 
 class Pet:
@@ -16,27 +17,9 @@ class Pet:
     foodInStock = 0
 
     def serialize(self):
-        pet_dict = {}
-        if self.name:
-            pet_dict['name'] = self.name
-        if self.race:
-            pet_dict['race'] = self.race
-        if self.level:
-            pet_dict['level'] = self.level
-        if self.exp:
-            pet_dict['exp'] = self.exp
-        if self.needExp:
-            pet_dict['needExp'] = self.needExp
-        if self.eatStatus:
-            pet_dict['eatStatus'] = self.eatStatus
-        if self.playStatus:
-            pet_dict['playStatus'] = self.playStatus
-        if self.bathStatus:
-            pet_dict['bathStatus'] = self.bathStatus
-        if self.profit:
-            pet_dict['profit'] = self.profit
-        if self.foodInStock:
-            pet_dict['foodInStock'] = self.foodInStock
+        pet_dict = {'name': self.name, 'race': self.race, 'level': self.level, 'exp': self.exp, 'needExp': self.needExp,
+                    'eatStatus': self.eatStatus, 'playStatus': self.playStatus, 'bathStatus': self.bathStatus,
+                    'profit': self.profit, 'foodInStock': self.foodInStock}
         return pet_dict
 
     @staticmethod
@@ -78,9 +61,43 @@ class Configuration:
     autoCraft = False
     autoEquip = False
     autoTrade = False
-    adminUser = None
-    orderChat = None
-    orderUser = None
+    adminUser = ''
+    orderChat = ''
+    orderUser = ''
+
+    def serialize(self):
+        conf_dict = {'autoArena': self.autoArena, 'autoQuest': self.autoQuest, 'autoBattle': self.autoBattle,
+                     'autoDonate': self.autoDonate, 'donateTill': self.donateTill, 'autoPet': self.autoPet,
+                     'autoCaptcha': self.autoCaptcha, 'autoCraft': self.autoCraft, 'autoEquip': self.autoEquip,
+                     'autoTrade': self.autoTrade, 'adminUser': self.adminUser, 'orderChat': self.orderChat,
+                     'orderUser': self.orderUser}
+        return conf_dict
+
+    @staticmethod
+    def deserialize(conf_dict):
+        conf_keys = conf_dict.keys()
+        conf = Configuration()
+        if 'name' in conf_keys:
+            conf.name = conf_dict['name']
+        if 'race' in conf_keys:
+            conf.race = conf_dict['race']
+        if 'level' in conf_keys:
+            conf.level = conf_dict['level']
+        if 'exp' in conf_keys:
+            conf.exp = conf_dict['exp']
+        if 'needExp' in conf_keys:
+            conf.needExp = conf_dict['needExp']
+        if 'eatStatus' in conf_keys:
+            conf.eatStatus = conf_dict['eatStatus']
+        if 'playStatus' in conf_keys:
+            conf.playStatus = conf_dict['playStatus']
+        if 'bathStatus' in conf_keys:
+            conf.bathStatus = conf_dict['bathStatus']
+        if 'profit' in conf_keys:
+            conf.profit = conf_dict['profit']
+        if 'foodInStock' in conf_keys:
+            conf.foodInStock = conf_dict['foodInStock']
+        return conf
 
 
 class CharacterStatus(enum.Enum):
@@ -102,6 +119,22 @@ class CharacterStatus(enum.Enum):
     ARENA = 15
 
 
+class Castle(enum.Enum):
+    UNDEFINED = 0
+    BLACK = 1
+    RED = 2
+    BLUE = 3
+    YELLOW = 4
+    WHITE = 5
+
+
+class Timers:
+    lastArena = 0.0
+    lastQuest = 0.0
+    lastProfileRequest = 0.0
+    battlesHours = [0, 4, 8, 12, 16, 20]
+
+
 class Character:
     name = ''
     prof = 0
@@ -119,7 +152,10 @@ class Character:
     arenaWins = 0
     arenaMax = 0
     arenaWalked = 0
+    castle = Castle.UNDEFINED
+    alliance = Castle.UNDEFINED
     status = CharacterStatus.UNDEFINED
+    config = Configuration()
 
     def __init__(self, client):
         self._client = client
@@ -135,45 +171,14 @@ class Character:
 
     def get_game_info(self):
         profile = self._client.request_profile()
-        stock = self._client.request_stock()
-        inv = self._client.request_inv()
 
     def serialize(self):
-        char_dict = {}
-        if self.name:
-            char_dict['name'] = self.name
-        if self.prof:
-            char_dict['prof'] = self.prof
-        if self.stamina:
-            char_dict['stamina'] = self.stamina
-        if self.level:
-            char_dict['level'] = self.level
-        if self.attack:
-            char_dict['attack'] = self.attack
-        if self.defence:
-            char_dict['defence'] = self.defence
-        if self.equip:
-            char_dict['equip'] = self.equip
-        if self.backpack:
-            char_dict['backpack'] = self.backpack
-        if self.stockSize:
-            char_dict['stockSize'] = self.stockSize
-        if self.stock:
-            char_dict['stock'] = self.stock
-        if self.exp:
-            char_dict['exp'] = self.exp
-        if self.needExp:
-            char_dict['needExp'] = self.needExp
-        if self.arenaWins:
-            char_dict['arenaWins'] = self.arenaWins
-        if self.arenaMax:
-            char_dict['arenaMax'] = self.arenaMax
-        if self.arenaWalked:
-            char_dict['arenaWalked'] = self.arenaWalked
-        if self.status:
-            char_dict['status'] = self.status
-        if self.pet:
-            char_dict['pet'] = self.pet.serialize()
+        char_dict = {'name': self.name, 'prof': self.prof, 'stamina': self.stamina, 'level': self.level,
+                     'attack': self.attack, 'defence': self.defence, 'equip': self.equip, 'backpack': self.backpack,
+                     'stockSize': self.stockSize, 'stock': self.stock, 'exp': self.exp, 'needExp': self.needExp,
+                     'arenaWins': self.arenaWins, 'arenaMax': self.arenaMax, 'arenaWalked': self.arenaWalked,
+                     'status': self.status, 'castle': self.castle, 'alliance': self.alliance,
+                     'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize()}
         return json.dumps(char_dict, ensure_ascii=False)
 
     def deserialize(self, json_str):
@@ -211,6 +216,12 @@ class Character:
             self.arenaWalked = char_dict['arenaWalked']
         if 'status' in keys:
             self.status = char_dict['status']
+        if 'castle' in keys:
+            self.castle = char_dict['castle']
+        if 'alliance' in keys:
+            self.alliance = char_dict['alliance']
         if 'pet' in keys:
             self.pet = Pet.deserialize(char_dict['pet'])
+        if 'config' in keys:
+            self.config = Configuration.deserialize(char_dict['config'])
 
