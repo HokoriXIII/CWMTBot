@@ -1,5 +1,4 @@
 from Client import Client
-from Character import Character
 from telethon import RPCError
 from getpass import getpass
 import shutil
@@ -47,10 +46,10 @@ class CWCliBot:
                         pw = getpass(
                             'Нужен пароль от двухфакторной авторизации: ')
                         code_ok = self.client.login(password=pw)
-                    else:
-                        raise e
 
         print('Набрали первую космечискую...')
-        char = Character(self.client)
+        self.client.start()
 
 
+if __name__ == '__main__':
+    CWCliBot()

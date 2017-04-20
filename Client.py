@@ -1,11 +1,29 @@
 from telethon import TelegramClient, RPCError
 from telethon.telegram_client import Session
 import config
+from Character import Character
+from enum import Enum
+
+
+class CharacterAction(Enum):
+    WAIT = 0
+    QUEST = 1
+    ATTACK = 2
+    DEFENCE = 3
+    ARENA = 4
+    CRAFT = 5
+    TRADE = 6
+    GET_DATA = 7
+
+
+def testF(msg):
+    print(msg)
 
 
 class Client:
 
     def __init__(self, session):
+        self._character = Character(session)
         session = Session.try_load_or_create_new(session)
         session.server_address = '149.154.167.50'
         session.port = 443
@@ -39,3 +57,7 @@ class Client:
             return 0
         except RPCError as e:
             raise e
+
+    def start(self):
+        self._tgClient.add_update_handler(testF)
+        # action, action_data = self._character.make_decision()

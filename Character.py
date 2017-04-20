@@ -1,7 +1,7 @@
-from Client import Client
 from pathlib import Path
 import json, enum
 import time
+import re
 
 
 class Pet:
@@ -123,36 +123,66 @@ class CharacterStatus(enum.Enum):
     DEFENCE_YELLOW = 13
     DEFENCE_WHITE = 14
     ARENA = 15
+    CRAFTING = 16
 
 
 class Castle(enum.Enum):
     UNDEFINED = 0
-    BLACK = 1
-    RED = 2
-    BLUE = 3
-    YELLOW = 4
-    WHITE = 5
+    BLACK = '🇬🇵'
+    RED = '🇮🇲'
+    BLUE = '🇪🇺'
+    YELLOW = '🇻🇦'
+    WHITE = '🇨🇾'
 
 
 class Timers:
-    lastArena = 0.0
+    lastArenaStart = 0.0
+    lastArenaEnd = 0.0
     lastQuest = 0.0
-    lastProfileRequest = 0.0
+    lastProfileUpdate = 0.0
+    lastStockUpdate = 0.0
+    lastEquipUpdate = 0.0
     lastBattle = 0.0
+    nextBattle = 0.0
+
+    def serialize(self):
+        time_dict = {'lastArenaStart': self.lastArenaStart, 'lastQuest': self.lastQuest,
+                     'lastProfileUpdate': self.lastProfileUpdate, 'lastBattle': self.lastBattle,
+                     'nextBattle': self.nextBattle, 'lastArenaEnd': self.lastArenaEnd}
+        return time_dict
+
+    @staticmethod
+    def deserialize(timers_dict):
+        timers = Timers()
+        keys = timers_dict.keys()
+        if 'lastArenaStart' in keys:
+            timers.lastArenaStart = timers_dict['lastArenaStart']
+        if 'lastArenaEnd' in keys:
+            timers.lastArenaEnd = timers_dict['lastArenaEnd']
+        if 'lastQuest' in keys:
+            timers.lastQuest = timers_dict['lastQuest']
+        if 'lastProfileUpdate' in keys:
+            timers.lastProfileUpdate = timers_dict['lastProfileUpdate']
+        if 'lastBattle' in keys:
+            timers.lastBattle = timers_dict['lastBattle']
+        if 'nextBattle' in keys:
+            timers.nextBattle = timers_dict['nextBattle']
+        return timers
 
 
 class Character:
     name = ''
-    prof = 0
+    prof = ''
     pet = None
     stamina = 5
+    maxStamina = 5
     level = 1
     attack = 1
     defence = 1
-    equip = []
-    backpack = []
+    equip = None
+    backpack = None
     stockSize = 4000
-    stock = []
+    stock = None
     exp = 0
     needExp = 0
     arenaWins = 0
@@ -162,21 +192,65 @@ class Character:
     alliance = Castle.UNDEFINED
     status = CharacterStatus.UNDEFINED
     config = Configuration()
+    timers = Timers()
+    gold = 0
+    donateGold = 0
+
+    needProfileRequest = False
+    needHeroRequest = False
+    needPetRequest = False
+    needStockRequest = False
+    needInvRequest = False
 
     def __init__(self, client):
-        self._client = client
-        self._name = client.get_session_name()
+        # self._client = client
+        self._name = client
         self._config_file = Path(self._name + '.character')
         if self._config_file.is_file():
             self.reload_config_file()
-        else:
-            self.get_game_info()
 
     def reload_config_file(self):
         self.deserialize(self._config_file.read_text())
 
-    def get_game_info(self):
-        self._client.request_profile()
+    def parse_profile(self, profile):
+        reg = 'Битва пяти замков через (?:([0-9]+)ч)?(?: ([0-9]+) минут!)?(?:.*)?\\n\\n' \
+              '(🇬🇵|🇮🇲|🇨🇾|🇻🇦|🇪🇺)(.+), (.+) .+ замка\\n' \
+              '🏅Уровень: ([0-9]+)\\n' \
+              '⚔️Атака: ([0-9]+) 🛡Защита: ([0-9]+)\\n' \
+              '🔥Опыт: ([0-9]+)/([0-9]+)\\n' \
+              '🔋Выносливость: ([0-9]+)/([0-9]+)\\n' \
+              '💰([0-9]+) 💠([0-9]+)\\n\\n' \
+              '🎽Экипировка (.+)\\n' \
+              '🎒Рюкзак: ([0-9]+)/([0-9]+) /inv' \
+              '(?:\\n\\nПитомец:\\n(.+) \(([0-9]+) ур\.\) (.+) /pet)?' \
+              '\\n\\nСостояние:\\n(.+)' \
+              '\\n\\nПодробнее: /hero'
+        parsed_data = re.search(reg, profile)
+        time_to_battle = 0
+        if parsed_data.group(1):
+            time_to_battle += parsed_data.group(1) * 60 * 60
+        if parsed_data.group(2):
+            time_to_battle += parsed_data.group(2) * 60
+        self.timers.nextBattle = time.time() + time_to_battle
+        self.castle = parsed_data.group(3)
+        self.name = parsed_data.group(4)
+        self.prof = parsed_data.group(5)
+        self.level = parsed_data.group(6)
+        self.attack = parsed_data.group(7)
+        self.defence = parsed_data.group(8)
+        self.exp = parsed_data.group(9)
+        self.needExp = parsed_data.group(10)
+        self.stamina = parsed_data.group(11)
+        self.maxStamina = parsed_data.group(12)
+        self.gold = parsed_data.group(13)
+        self.donateGold = parsed_data.group(14)
+        if not self.stock:
+            self.needStockRequest = True
+        if not self.equip or not self.backpack:
+            self.needInvRequest = True
+        if parsed_data.group(18) and not self.pet or str(parsed_data.group(20)) != '😁':
+            self.needPetRequest = True
+        self.timers.lastProfileUpdate = time.time()
 
     def serialize(self):
         char_dict = {'name': self.name, 'prof': self.prof, 'stamina': self.stamina, 'level': self.level,
@@ -184,7 +258,8 @@ class Character:
                      'stockSize': self.stockSize, 'stock': self.stock, 'exp': self.exp, 'needExp': self.needExp,
                      'arenaWins': self.arenaWins, 'arenaMax': self.arenaMax, 'arenaWalked': self.arenaWalked,
                      'status': self.status, 'castle': self.castle, 'alliance': self.alliance,
-                     'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize()}
+                     'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize(),
+                     'timers': self.timers.serialize(), 'maxStamina': self.maxStamina}
         return json.dumps(char_dict, ensure_ascii=False)
 
     def deserialize(self, json_str):
@@ -230,4 +305,8 @@ class Character:
             self.pet = Pet.deserialize(char_dict['pet'])
         if 'config' in keys:
             self.config = Configuration.deserialize(char_dict['config'])
+        if 'timers' in keys:
+            self.timers = Timers.deserialize(char_dict['timers'])
+        if 'maxStamina' in keys:
+            self.maxStamina = char_dict['maxStamina']
 
