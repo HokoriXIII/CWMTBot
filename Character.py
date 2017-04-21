@@ -139,7 +139,7 @@ class CharacterStatus(enum.Enum):
     CRAFTING = 16
 
 
-class Castle(enum.Enum):
+class Castle:
     UNDEFINED = 0
     BLACK = '🇬🇵'
     RED = '🇮🇲'
