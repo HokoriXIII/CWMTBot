@@ -54,6 +54,15 @@ class Client(Thread):
         finally:
             self._global_lock.release()
 
+    def can_order_id(self, tgid):
+        self._global_lock.acquire()
+        try:
+            return tgid == self._orderbot.id or \
+                   tgid == self._admin.id or \
+                   tgid == self._databot.id
+        finally:
+            self._global_lock.release()
+
     def channel_in_list(self, channel):
         self._global_lock.acquire()
         try:
@@ -165,6 +174,10 @@ class Client(Thread):
             raise e
 
     def send_order(self, order):
+        if order == Castle.BLACK:
+            self._tgClient.send_message(self._cwbot, '🛡 Защита')
+        else:
+            self._tgClient.send_message(self._cwbot, '⚔️Атака')
         result = self._tgClient.invoke(
             GetInlineBotResultsRequest(get_input_peer(self._orderbot),
                                        get_input_peer(self._cwbot),
