@@ -9,6 +9,8 @@ from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, Update
 from telethon.tl.functions.messages import GetInlineBotResultsRequest, SendInlineBotResultRequest
 from telethon.utils import get_input_peer
 import telethon.helpers as utils
+from time import sleep
+import random
 
 client = None
 
@@ -178,6 +180,7 @@ class Client(Thread):
             self._tgClient.send_message(self._cwbot, '🛡 Защита')
         else:
             self._tgClient.send_message(self._cwbot, '⚔️Атака')
+        sleep(random.randint(2, 5))
         result = self._tgClient.invoke(
             GetInlineBotResultsRequest(get_input_peer(self._orderbot),
                                        get_input_peer(self._cwbot),
