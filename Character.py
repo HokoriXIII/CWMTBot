@@ -2,6 +2,19 @@ from pathlib import Path
 import json, enum
 import time
 import re
+import regexp
+
+
+class CharacterAction(enum.Enum):
+    WAIT = 0
+    QUEST = 1
+    ATTACK = 2
+    DEFENCE = 3
+    ARENA = 4
+    CRAFT = 5
+    TRADE = 6
+    GET_DATA = 7
+    CAPTCHA = 8
 
 
 class Pet:
@@ -148,7 +161,8 @@ class Timers:
     def serialize(self):
         time_dict = {'lastArenaStart': self.lastArenaStart, 'lastQuest': self.lastQuest,
                      'lastProfileUpdate': self.lastProfileUpdate, 'lastBattle': self.lastBattle,
-                     'nextBattle': self.nextBattle, 'lastArenaEnd': self.lastArenaEnd}
+                     'nextBattle': self.nextBattle, 'lastArenaEnd': self.lastArenaEnd,
+                     'lastStockUpdate': self.lastStockUpdate, 'lastEquipUpdate': self.lastEquipUpdate}
         return time_dict
 
     @staticmethod
@@ -167,6 +181,10 @@ class Timers:
             timers.lastBattle = timers_dict['lastBattle']
         if 'nextBattle' in keys:
             timers.nextBattle = timers_dict['nextBattle']
+        if 'lastStockUpdate' in keys:
+            timers.lastStockUpdate = timers_dict['lastStockUpdate']
+        if 'lastEquipUpdate' in keys:
+            timers.lastEquipUpdate = timers_dict['lastEquipUpdate']
         return timers
 
 
@@ -196,11 +214,12 @@ class Character:
     gold = 0
     donateGold = 0
 
-    needProfileRequest = False
-    needHeroRequest = False
-    needPetRequest = False
-    needStockRequest = False
-    needInvRequest = False
+    _needProfileRequest = False
+    _needHeroRequest = False
+    _needPetRequest = False
+    _needStockRequest = False
+    _needInvRequest = False
+    _needLevelUp = False
 
     def __init__(self, client):
         # self._client = client
@@ -208,49 +227,48 @@ class Character:
         self._config_file = Path(self._name + '.character')
         if self._config_file.is_file():
             self.reload_config_file()
+        else:
+            self._needProfileRequest = True
 
     def reload_config_file(self):
         self.deserialize(self._config_file.read_text())
 
+    def save_config_file(self):
+        config = self.serialize()
+        self._config_file.write_text(config)
+
     def parse_profile(self, profile):
-        reg = 'Битва пяти замков через (?:([0-9]+)ч)?(?: ([0-9]+) минут!)?(?:.*)?\\n\\n' \
-              '(🇬🇵|🇮🇲|🇨🇾|🇻🇦|🇪🇺)(.+), (.+) .+ замка\\n' \
-              '🏅Уровень: ([0-9]+)\\n' \
-              '⚔️Атака: ([0-9]+) 🛡Защита: ([0-9]+)\\n' \
-              '🔥Опыт: ([0-9]+)/([0-9]+)\\n' \
-              '🔋Выносливость: ([0-9]+)/([0-9]+)\\n' \
-              '💰([0-9]+) 💠([0-9]+)\\n\\n' \
-              '🎽Экипировка (.+)\\n' \
-              '🎒Рюкзак: ([0-9]+)/([0-9]+) /inv' \
-              '(?:\\n\\nПитомец:\\n(.+) \(([0-9]+) ур\.\) (.+) /pet)?' \
-              '\\n\\nСостояние:\\n(.+)' \
-              '\\n\\nПодробнее: /hero'
-        parsed_data = re.search(reg, profile)
+        parsed_data = re.search(regexp.main_hero, profile)
         time_to_battle = 0
         if parsed_data.group(1):
-            time_to_battle += parsed_data.group(1) * 60 * 60
+            self._needLevelUp = True
         if parsed_data.group(2):
-            time_to_battle += parsed_data.group(2) * 60
+            time_to_battle += parsed_data.group(2) * 60 * 60
+        if parsed_data.group(3):
+            time_to_battle += parsed_data.group(3) * 60
         self.timers.nextBattle = time.time() + time_to_battle
-        self.castle = parsed_data.group(3)
-        self.name = parsed_data.group(4)
-        self.prof = parsed_data.group(5)
-        self.level = parsed_data.group(6)
-        self.attack = parsed_data.group(7)
-        self.defence = parsed_data.group(8)
-        self.exp = parsed_data.group(9)
-        self.needExp = parsed_data.group(10)
-        self.stamina = parsed_data.group(11)
-        self.maxStamina = parsed_data.group(12)
-        self.gold = parsed_data.group(13)
-        self.donateGold = parsed_data.group(14)
+        self.castle = parsed_data.group(4)
+        self.name = parsed_data.group(5)
+        self.prof = parsed_data.group(6)
+        self.level = parsed_data.group(7)
+        self.attack = parsed_data.group(8)
+        self.defence = parsed_data.group(9)
+        self.exp = parsed_data.group(10)
+        self.needExp = parsed_data.group(11)
+        self.stamina = parsed_data.group(12)
+        self.maxStamina = parsed_data.group(13)
+        self.gold = parsed_data.group(14)
+        self.donateGold = parsed_data.group(15)
         if not self.stock:
-            self.needStockRequest = True
-        if not self.equip or not self.backpack:
-            self.needInvRequest = True
-        if parsed_data.group(18) and not self.pet or str(parsed_data.group(20)) != '😁':
-            self.needPetRequest = True
+            self._needStockRequest = True
+        if (not self.equip or not self.backpack) \
+                and str(parsed_data.group(16)) != '[-]'\
+                and int(parsed_data.group(17)) != 0:
+            self._needInvRequest = True
+        if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
+            self._needPetRequest = True
         self.timers.lastProfileUpdate = time.time()
+        self.save_config_file()
 
     def serialize(self):
         char_dict = {'name': self.name, 'prof': self.prof, 'stamina': self.stamina, 'level': self.level,

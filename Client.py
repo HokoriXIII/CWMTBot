@@ -6,19 +6,9 @@ from enum import Enum
 from multiprocessing import RLock, Lock
 from threading import Thread, Timer
 from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, UpdatesTg, UpdateNewChannelMessage, \
-    UpdateNewMessage, Message
+    UpdateNewMessage, Message, InputChannel
 from telethon.tl.functions.contacts import SearchRequest
-
-
-class CharacterAction(Enum):
-    WAIT = 0
-    QUEST = 1
-    ATTACK = 2
-    DEFENCE = 3
-    ARENA = 4
-    CRAFT = 5
-    TRADE = 6
-    GET_DATA = 7
+from telethon.tl.functions.channels import GetFullChannelRequest
 
 
 client = None
@@ -31,21 +21,25 @@ def msg_handler(msg):
             if type(upd) is UpdateNewChannelMessage:
                 message = upd.message
                 if type(message) is Message:
+                    channel = None
+                    for chat in msg.chats:
+                        if chat.id == message.to_id.channel_id:
+                            channel = chat
                     if message.out:
-                        print('You sent {} to chat #{}'.format(message.message,
+                        print('Long answer\nYou sent {} to chat #{}'.format(message.message,
                                                                message.to_id.channel_id))
-                    elif client.id_in_list(message.from_id):
-                        print('[Chat #{}, user #{} sent {}]'.format(
+                    elif client.id_in_list(message.from_id) and channel and client.channel_in(channel):
+                        print('Long answer\n[Chat #{}, user #{} sent {}]'.format(
                             message.to_id.channel_id, message.from_id,
                             message.message))
             elif type(upd) is UpdateNewMessage:
                 message = upd.message
                 if type(message) is Message:
                     if message.out:
-                        print('You sent {} to user #{}'.format(message.message,
+                        print('Long answer\nYou sent {} to user #{}'.format(message.message,
                                                                message.to_id.user_id))
                     elif client.id_in_list(message.from_id):
-                        print('[User #{} sent {}]'.format(
+                        print('Long answer\n[User #{} sent {}]'.format(
                             message.from_id,
                             message.message))
     if type(msg) is UpdateShortMessage:
@@ -104,6 +98,13 @@ class Client(Thread):
         finally:
             self._global_lock.release()
 
+    def channel_in(self, channel):
+        self._global_lock.acquire()
+        try:
+            return channel.tittle == config.OrderChat
+        finally:
+            self._global_lock.release()
+
     def set_phone(self, phone):
         self._phone = phone
         self._phone_lock.release()
@@ -121,11 +122,24 @@ class Client(Thread):
         self._global_lock.acquire()
         global client
         client = self
-        self._cwbot_id = self._tgClient.invoke(SearchRequest(config.CWBot, 1)).results[0].user_id
-        self._captchabot_id = self._tgClient.invoke(SearchRequest(config.CaptchaBot, 1)).results[0].user_id
-        self._admin_id = self._tgClient.invoke(SearchRequest('@RuckusDJ', 1)).results
-        self._tradebot_id = self._tgClient.invoke(SearchRequest(config.TradeBot, 1)).results[0].user_id
-        self._orderbot_id = self._tgClient.invoke(SearchRequest('@ToweRobot', 1)).results[0].user_id
+        res = self._tgClient.invoke(SearchRequest(config.CWBot, 1)).results
+        if len(res):
+            self._cwbot_id = res[0].user_id
+        res = self._tgClient.invoke(SearchRequest(config.CaptchaBot, 1)).results
+        if len(res):
+            self._captchabot_id = res[0].user_id
+        res = self._tgClient.invoke(SearchRequest(config.TradeBot, 1)).results
+        if len(res):
+            self._tradebot_id = res[0].user_id
+        res = self._tgClient.invoke(SearchRequest(config.OrderBot, 1)).results
+        if len(res):
+            self._orderbot_id = res[0].user_id
+        res = self._tgClient.invoke(SearchRequest(config.Admin, 1)).results
+        if len(res):
+            self._admin_id = res[0].user_id
+        else:
+            # Если юзера-админа не нашли, то админим сами
+            self._admin_id = self._tgClient.session.user.id
         self.handle()
         self._global_lock.release()
 
