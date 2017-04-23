@@ -1,20 +1,14 @@
+# -*- coding: utf-8 -*-
 from pathlib import Path
 import json, enum
 import time
 import re
 import regexp
-
-
-class CharacterAction(enum.Enum):
-    WAIT = 0
-    QUEST = 1
-    ATTACK = 2
-    DEFENCE = 3
-    ARENA = 4
-    CRAFT = 5
-    TRADE = 6
-    GET_DATA = 7
-    CAPTCHA = 8
+import pytz
+from pytz import timezone
+from datetime import datetime, timedelta
+from enums import *
+from random import randint
 
 
 class Pet:
@@ -65,7 +59,7 @@ class Pet:
 class Configuration:
     autoArena = True
     autoQuest = True
-    defaultQuest = 'les'
+    defaultQuest = Quest.LES
     autoBattle = True
     autoDonate = False
     donateTill = 0
@@ -75,17 +69,14 @@ class Configuration:
     autoEquip = False
     autoTrade = False
     autoLevelUp = True
-    levelUpAtk = True   # Если True, то уровень будет вкачиваться в атаку, если False в защиту.
-    adminUser = ''
-    orderChat = ''
-    orderUser = ''
+    # Если levelUpAtk True, то уровень будет вкачиваться в атаку, если False в защиту.
+    levelUpAtk = True
 
     def serialize(self):
         conf_dict = {'autoArena': self.autoArena, 'autoQuest': self.autoQuest, 'autoBattle': self.autoBattle,
                      'autoDonate': self.autoDonate, 'donateTill': self.donateTill, 'autoPet': self.autoPet,
                      'autoCaptcha': self.autoCaptcha, 'autoCraft': self.autoCraft, 'autoEquip': self.autoEquip,
-                     'autoTrade': self.autoTrade, 'adminUser': self.adminUser, 'orderChat': self.orderChat,
-                     'orderUser': self.orderUser, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk}
+                     'autoTrade': self.autoTrade, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk}
         return conf_dict
 
     @staticmethod
@@ -119,35 +110,6 @@ class Configuration:
         return conf
 
 
-class CharacterStatus(enum.Enum):
-    UNDEFINED = 0
-    REST = 1
-    QUEST_LES = 2
-    QUEST_CAVE = 3
-    QUEST_COW = 4
-    ATTACK_BLACK = 5
-    ATTACK_RED = 6
-    ATTACK_BLUE = 7
-    ATTACK_YELLOW = 8
-    ATTACK_WHITE = 9
-    DEFENCE_BLACK = 10
-    DEFENCE_RED = 11
-    DEFENCE_BLUE = 12
-    DEFENCE_YELLOW = 13
-    DEFENCE_WHITE = 14
-    ARENA = 15
-    CRAFTING = 16
-
-
-class Castle:
-    UNDEFINED = 0
-    BLACK = '🇬🇵'
-    RED = '🇮🇲'
-    BLUE = '🇪🇺'
-    YELLOW = '🇻🇦'
-    WHITE = '🇨🇾'
-
-
 class Timers:
     lastArenaStart = 0.0
     lastArenaEnd = 0.0
@@ -155,13 +117,10 @@ class Timers:
     lastProfileUpdate = 0.0
     lastStockUpdate = 0.0
     lastEquipUpdate = 0.0
-    lastBattle = 0.0
-    nextBattle = 0.0
 
     def serialize(self):
         time_dict = {'lastArenaStart': self.lastArenaStart, 'lastQuest': self.lastQuest,
-                     'lastProfileUpdate': self.lastProfileUpdate, 'lastBattle': self.lastBattle,
-                     'nextBattle': self.nextBattle, 'lastArenaEnd': self.lastArenaEnd,
+                     'lastProfileUpdate': self.lastProfileUpdate, 'lastArenaEnd': self.lastArenaEnd,
                      'lastStockUpdate': self.lastStockUpdate, 'lastEquipUpdate': self.lastEquipUpdate}
         return time_dict
 
@@ -177,10 +136,6 @@ class Timers:
             timers.lastQuest = timers_dict['lastQuest']
         if 'lastProfileUpdate' in keys:
             timers.lastProfileUpdate = timers_dict['lastProfileUpdate']
-        if 'lastBattle' in keys:
-            timers.lastBattle = timers_dict['lastBattle']
-        if 'nextBattle' in keys:
-            timers.nextBattle = timers_dict['nextBattle']
         if 'lastStockUpdate' in keys:
             timers.lastStockUpdate = timers_dict['lastStockUpdate']
         if 'lastEquipUpdate' in keys:
@@ -220,6 +175,7 @@ class Character:
     _needStockRequest = False
     _needInvRequest = False
     _needLevelUp = False
+    _currentOrder = Castle.UNDEFINED
 
     def __init__(self, client):
         # self._client = client
@@ -231,34 +187,59 @@ class Character:
             self._needProfileRequest = True
 
     def reload_config_file(self):
-        self.deserialize(self._config_file.read_text())
+        self.deserialize(self._config_file.read_text('utf8'))
 
     def save_config_file(self):
         config = self.serialize()
-        self._config_file.write_text(config)
+        self._config_file.write_text(config, 'utf8')
+
+    def ask_action(self):
+        if self.status == CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and datetime.now().time().hour in [0, 4, 8, 12, 16, 20]:
+            self.status = CharacterStatus.REST
+        if self.status == CharacterStatus.QUEST_LES and self.timers.lastQuest + 300 < time.time():
+            self.status = CharacterStatus.REST
+        if self.status == CharacterStatus.REST:
+            if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and \
+                            datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and datetime.now().time().minute > 40:
+                self.status = CharacterStatus([CharacterAction.ATTACK, self._currentOrder])
+                return self.status.value
+            elif self.timers.lastProfileUpdate + 3600 < time.time():
+                self.status = CharacterStatus.WAITING_DATA
+                return [CharacterAction.GET_DATA]
+            elif self.stamina > 0 and self.config.defaultQuest == Quest.LES:
+                self.timers.lastQuest = time.time() + randint(10, 180)
+                self.status = CharacterStatus.QUEST_LES
+                self.stamina -= 1
+                self.save_config_file()
+                return [CharacterAction.QUEST, self.config.defaultQuest]
+        return [CharacterAction.WAIT]
+
+    def set_order(self, order):
+        try:
+            self._currentOrder = Castle(order)
+            if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) or \
+                            self.status != CharacterStatus([CharacterAction.DEFENCE, self._currentOrder]):
+                self.status = CharacterStatus.REST
+        except ValueError:
+            pass
 
     def parse_profile(self, profile):
         parsed_data = re.search(regexp.main_hero, profile)
         time_to_battle = 0
         if parsed_data.group(1):
             self._needLevelUp = True
-        if parsed_data.group(2):
-            time_to_battle += parsed_data.group(2) * 60 * 60
-        if parsed_data.group(3):
-            time_to_battle += parsed_data.group(3) * 60
-        self.timers.nextBattle = time.time() + time_to_battle
-        self.castle = parsed_data.group(4)
-        self.name = parsed_data.group(5)
-        self.prof = parsed_data.group(6)
-        self.level = parsed_data.group(7)
-        self.attack = parsed_data.group(8)
-        self.defence = parsed_data.group(9)
-        self.exp = parsed_data.group(10)
-        self.needExp = parsed_data.group(11)
-        self.stamina = parsed_data.group(12)
-        self.maxStamina = parsed_data.group(13)
-        self.gold = parsed_data.group(14)
-        self.donateGold = parsed_data.group(15)
+        self.castle = Castle(str(parsed_data.group(4)))
+        self.name = str(parsed_data.group(5))
+        self.prof = str(parsed_data.group(6))
+        self.level = int(parsed_data.group(7))
+        self.attack = int(parsed_data.group(8))
+        self.defence = int(parsed_data.group(9))
+        self.exp = int(parsed_data.group(10))
+        self.needExp = int(parsed_data.group(11))
+        self.stamina = int(parsed_data.group(12))
+        self.maxStamina = int(parsed_data.group(13))
+        self.gold = int(parsed_data.group(14))
+        self.donateGold = int(parsed_data.group(15))
         if not self.stock:
             self._needStockRequest = True
         if (not self.equip or not self.backpack) \
@@ -267,7 +248,9 @@ class Character:
             self._needInvRequest = True
         if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
             self._needPetRequest = True
-        self.timers.lastProfileUpdate = time.time()
+        if str(parsed_data.group(23)) == '🛌Отдых':
+            self.status = CharacterStatus.REST
+        self.timers.lastProfileUpdate = time.time() + randint(50, 3600)
         self.save_config_file()
 
     def serialize(self):
@@ -275,7 +258,7 @@ class Character:
                      'attack': self.attack, 'defence': self.defence, 'equip': self.equip, 'backpack': self.backpack,
                      'stockSize': self.stockSize, 'stock': self.stock, 'exp': self.exp, 'needExp': self.needExp,
                      'arenaWins': self.arenaWins, 'arenaMax': self.arenaMax, 'arenaWalked': self.arenaWalked,
-                     'status': self.status, 'castle': self.castle, 'alliance': self.alliance,
+                     'castle': self.castle.value, 'alliance': self.alliance.value,
                      'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize(),
                      'timers': self.timers.serialize(), 'maxStamina': self.maxStamina}
         return json.dumps(char_dict, ensure_ascii=False)
@@ -318,12 +301,12 @@ class Character:
         if 'castle' in keys:
             self.castle = char_dict['castle']
         if 'alliance' in keys:
-            self.alliance = char_dict['alliance']
-        if 'pet' in keys:
+            self.alliance = Castle(char_dict['alliance'])
+        if 'pet' in keys and char_dict['pet']:
             self.pet = Pet.deserialize(char_dict['pet'])
-        if 'config' in keys:
+        if 'config' in keys and char_dict['config']:
             self.config = Configuration.deserialize(char_dict['config'])
-        if 'timers' in keys:
+        if 'timers' in keys and char_dict['timers']:
             self.timers = Timers.deserialize(char_dict['timers'])
         if 'maxStamina' in keys:
             self.maxStamina = char_dict['maxStamina']

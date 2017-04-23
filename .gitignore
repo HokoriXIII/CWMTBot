@@ -1,0 +1,5 @@
+config.py
+.idea/
+Ruckus.character
+Ruckus.session
+__pycache__/

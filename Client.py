@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+import importlib
 from telethon import TelegramClient, RPCError
 from telethon.telegram_client import Session
 import config
@@ -11,6 +13,11 @@ from telethon.utils import get_input_peer
 import telethon.helpers as utils
 from time import sleep
 import random
+import pytz
+from pytz import timezone
+from datetime import datetime, timedelta, time
+import re
+import regexp
 
 client = None
 
@@ -20,6 +27,9 @@ class Client(Thread):
     _code_lock = Lock()
     _pass_lock = Lock()
     _global_lock = RLock()
+    _battle_hours = [0, 4, 8, 12, 16, 20]
+    _sleep_intervals = [(time(0, 10), time(3, 50)),
+                        (time(4, 15), time(7, 45))]
 
     def __init__(self, session):
         super().__init__()
@@ -43,6 +53,9 @@ class Client(Thread):
         self._orderbot = None
         self._databot = None
         self._dialogs = None
+        self._timezone = timezone('Europe/Moscow')
+        self._sender = None
+        self._sender_module = None
 
     def id_in_list(self, tgid):
         self._global_lock.acquire()
@@ -110,6 +123,7 @@ class Client(Thread):
         self._dialogs = self._tgClient.get_dialogs(1000)
         global client
         client = self
+        self._sender_module = importlib.import_module(config.Module)
         self._cwbot = self.find_contact_by_username(config.CWBot)
         self._captchabot = self.find_contact_by_username(config.CaptchaBot)
         self._tradebot = self.find_contact_by_username(config.TradeBot)
@@ -120,8 +134,15 @@ class Client(Thread):
         if not self._admin:
             # Если юзера-админа не нашли, то админим сами
             self._admin = self._tgClient.session.user
+        self._sender = self._sender_module.Sender(self._tgClient, cwbot=self._cwbot, captchabot=self._captchabot,
+                                                  tradebot=self._tradebot, orderbot=self._orderbot,
+                                                  databot=self._databot, admin=self._admin, ordergroup=self._ordergroup)
         self.handle()
         self._global_lock.release()
+
+        while True:
+            self._sender.send_order(self._character.ask_action())
+            sleep(random.randint(2, 5))
 
     def _thread_auth(self):
         self._global_lock.acquire()
@@ -175,21 +196,6 @@ class Client(Thread):
         except RPCError as e:
             raise e
 
-    def send_order(self, order):
-        if order == Castle.BLACK:
-            self._tgClient.send_message(self._cwbot, '🛡 Защита')
-        else:
-            self._tgClient.send_message(self._cwbot, '⚔️Атака')
-        sleep(random.randint(2, 5))
-        result = self._tgClient.invoke(
-            GetInlineBotResultsRequest(get_input_peer(self._orderbot),
-                                       get_input_peer(self._cwbot),
-                                       order, ''))
-        self._tgClient.invoke(
-            SendInlineBotResultRequest(get_input_peer(self._cwbot),
-                                       utils.generate_random_long(),
-                                       result.query_id, result.results[0].id))
-
     @staticmethod
     def msg_handler(msg):
         global client
@@ -208,14 +214,21 @@ class Client(Thread):
                         else:
                             if channel and client.channel_in_list(channel):
                                 if client.can_order_id(message.from_id):
-                                    client.send_order(message.message)
+                                    client._character.set_order(message.message)
                 elif type(upd) is UpdateNewMessage:
                     message = upd.message
                     if type(message) is Message:
                         if message.out:
+                            if message.to_id.user_id == message.from_id:
+                                client._character.set_order(message.message)
                             print('Long answer\nYou sent {} to user #{}'.format(message.message,
                                                                                 message.to_id.user_id))
                         elif client.id_in_list(message.from_id):
+                            if message.from_id == client._admin.id:
+                                client._character.set_order(message.message)
+                            elif message.from_id == client._cwbot.id:
+                                if re.search(regexp.main_hero, message.message):
+                                    client._character.parse_profile(message.message)
                             print('Long answer\n[User #{} sent {}]'.format(
                                 message.from_id,
                                 message.message))
