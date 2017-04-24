@@ -225,7 +225,6 @@ class Character:
 
     def parse_profile(self, profile):
         parsed_data = re.search(regexp.main_hero, profile)
-        time_to_battle = 0
         if parsed_data.group(1):
             self._needLevelUp = True
         self.castle = Castle(str(parsed_data.group(4)))
@@ -248,10 +247,45 @@ class Character:
             self._needInvRequest = True
         if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
             self._needPetRequest = True
-        if str(parsed_data.group(23)) == '🛌Отдых':
-            self.status = CharacterStatus.REST
+        self.status = self._parse_status(parsed_data.group(23))
         self.timers.lastProfileUpdate = time.time() + randint(50, 3600)
         self.save_config_file()
+
+    def _parse_status(self, status):
+        if StatusText.REST.value in status:
+            return CharacterStatus.REST
+        elif StatusText.LES.value in status:
+            return CharacterStatus.QUEST_LES
+        elif StatusText.CAVE.value in status:
+            return CharacterStatus.QUEST_CAVE
+        elif StatusText.COW.value in status:
+            return CharacterStatus.QUEST_COW
+        elif StatusText.ARENA.value in status:
+            return CharacterStatus.ARENA
+        elif StatusText.ATTACK.value in status:
+            castle = self._find_castle(status)
+            return CharacterStatus([CharacterAction.ATTACK, castle])
+        elif StatusText.DEFENCE.value in status:
+            castle = self._find_castle(status)
+            return CharacterStatus([CharacterAction.DEFENCE, castle])
+        return CharacterStatus.UNDEFINED
+
+    def _find_castle(self, somestr):
+        if Castle.BLACK.value in somestr:
+            return Castle.BLACK
+        elif Castle.BLUE.value in somestr:
+            return Castle.BLUE
+        elif Castle.RED.value in somestr:
+            return Castle.RED
+        elif Castle.WHITE.value in somestr:
+            return Castle.WHITE
+        elif Castle.YELLOW.value in somestr:
+            return Castle.YELLOW
+        elif Icons.LES.value in somestr:
+            return Castle.LES
+        elif Icons.GORY.value in somestr:
+            return Castle.GORY
+        return Castle.UNDEFINED
 
     def serialize(self):
         char_dict = {'name': self.name, 'prof': self.prof, 'stamina': self.stamina, 'level': self.level,
