@@ -25,6 +25,26 @@ class Castle(Enum):
     GORY = '⛰Горный форт'
 
 
+class Icons(Enum):
+    BLACK = '🇬🇵'
+    RED = '🇮🇲'
+    BLUE = '🇪🇺'
+    YELLOW = '🇻🇦'
+    WHITE = '🇨🇾'
+    LES = '🌲'
+    GORY = '⛰'
+
+
+class StatusText(Enum):
+    REST = '🛌Отдых'
+    ATTACK = 'Атака'
+    DEFENCE = 'Защита'
+    LES = 'В лесу'
+    CAVE = 'В пещере'
+    COW = 'Возишься с КОРОВАНАМИ'
+    ARENA = 'На арене'
+
+
 class CharacterStatus(Enum):
     UNDEFINED = 0
     REST = 1
