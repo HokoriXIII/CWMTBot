@@ -175,7 +175,6 @@ class Character:
     _needStockRequest = False
     _needInvRequest = False
     _needLevelUp = False
-    _currentOrder = Castle.UNDEFINED
 
     def __init__(self, client):
         # self._client = client
@@ -183,8 +182,10 @@ class Character:
         self._config_file = Path(self._name + '.character')
         if self._config_file.is_file():
             self.reload_config_file()
+            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
         else:
             self._needProfileRequest = True
+            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
 
     def reload_config_file(self):
         self.deserialize(self._config_file.read_text('utf8'))
@@ -194,16 +195,19 @@ class Character:
         self._config_file.write_text(config, 'utf8')
 
     def ask_action(self):
-        if self.status == CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and datetime.now().time().hour in [0, 4, 8, 12, 16, 20]:
+        if (self.status.value[0] == CharacterAction.ATTACK or self.status.value[0] == CharacterAction.DEFENCE) and \
+                        datetime.now().time().hour in [0, 4, 8, 12, 16, 20] and \
+                        datetime.now().time().minute > 5:
             self.status = CharacterStatus.REST
-        if self.status == CharacterStatus.QUEST_LES and self.timers.lastQuest + 300 < time.time():
-            self.status = CharacterStatus.REST
+            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
+        if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and \
+                        datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and\
+                        datetime.now().time().minute > 40:
+            self.status = CharacterStatus([CharacterAction.ATTACK, self._currentOrder])
+            return self.status.value
         if self.status == CharacterStatus.REST:
-            if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and \
-                            datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and datetime.now().time().minute > 40:
-                self.status = CharacterStatus([CharacterAction.ATTACK, self._currentOrder])
-                return self.status.value
-            elif self.timers.lastProfileUpdate + 3600 < time.time():
+            if self.timers.lastProfileUpdate + 3600 < time.time() or self._needProfileRequest:
+                self._needProfileRequest = False
                 self.status = CharacterStatus.WAITING_DATA
                 return [CharacterAction.GET_DATA]
             elif self.stamina > 0 and self.config.defaultQuest == Quest.LES:
@@ -250,6 +254,8 @@ class Character:
         self.status = self._parse_status(parsed_data.group(23))
         self.timers.lastProfileUpdate = time.time() + randint(50, 3600)
         self.save_config_file()
+        if self._currentOrder[1] == Castle.UNDEFINED:
+            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
 
     def _parse_status(self, status):
         if StatusText.REST.value in status:
@@ -271,15 +277,15 @@ class Character:
         return CharacterStatus.UNDEFINED
 
     def _find_castle(self, somestr):
-        if Castle.BLACK.value in somestr:
+        if Icons.BLACK.value in somestr:
             return Castle.BLACK
-        elif Castle.BLUE.value in somestr:
+        elif Icons.BLUE.value in somestr:
             return Castle.BLUE
-        elif Castle.RED.value in somestr:
+        elif Icons.RED.value in somestr:
             return Castle.RED
-        elif Castle.WHITE.value in somestr:
+        elif Icons.WHITE.value in somestr:
             return Castle.WHITE
-        elif Castle.YELLOW.value in somestr:
+        elif Icons.YELLOW.value in somestr:
             return Castle.YELLOW
         elif Icons.LES.value in somestr:
             return Castle.LES
