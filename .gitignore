@@ -1,5 +1,5 @@
 config.py
 .idea/
-Ruckus.character
-Ruckus.session
+*.character
+*.session
 __pycache__/
