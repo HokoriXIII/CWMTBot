@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from Client import Client
-from telethon import RPCError
 from getpass import getpass
+from getopt import getopt
 import shutil
-from multiprocessing import Lock
+import sys
 
 # Get the (current) number of lines in the terminal
 cols, rows = shutil.get_terminal_size()
@@ -21,12 +21,14 @@ def print_title(title):
 class CWCliBot:
 
     def __init__(self):
+        opts, args = getopt(sys.argv[1:], 'm:a:o:c:d:', ['module=', 'admin=', 'order=', 'chat=', 'data='])
         print_title('Поехали!')
 
         session = input('Назови сессию (если залогинишься, '
                         'потом не надо будет кучу всего вводить, только это название): ')
 
         self.client = Client(session)
+        self.client.set_opts(opts)
         self.client.setName(session)
 
         self.client.start()

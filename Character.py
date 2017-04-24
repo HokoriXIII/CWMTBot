@@ -210,6 +210,19 @@ class Character:
         self._needProfileRequest = True
         self._currentOrder = [CharacterAction.DEFENCE, self.castle]
 
+    def set_opts(self, opts):
+        for opt, arg in opts:
+            if opt in ('-m', '--module'):
+                self.config.module = arg
+            elif opt in ('-a', '--admin'):
+                self.config.admin = arg
+            elif opt in ('-o', '--order'):
+                self.config.orderBot = arg
+            elif opt in ('-c', '--chat'):
+                self.config.orderChat = arg
+            elif opt in ('-d', '--data'):
+                self.config.dataBot = arg
+
     def reload_config_file(self):
         self.deserialize(self._config_file.read_text('utf8'))
 
