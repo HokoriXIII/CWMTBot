@@ -19,8 +19,6 @@ from datetime import datetime, timedelta, time
 import re
 import regexp
 
-client = None
-
 
 class Client(Thread):
     _phone_lock = Lock()
@@ -33,7 +31,7 @@ class Client(Thread):
 
     def __init__(self, session):
         super().__init__()
-        self._character = Character(session)
+        self.character = Character(session)
         self._session = session
         self._phone = ''
         self._code = ''
@@ -81,7 +79,7 @@ class Client(Thread):
     def channel_in_list(self, channel):
         self._global_lock.acquire()
         try:
-            return channel.title == config.OrderChat
+            return channel.title == self._ordergroup.title
         finally:
             self._global_lock.release()
 
@@ -97,9 +95,9 @@ class Client(Thread):
         self._pass = password
         self._pass_lock.release()
 
-    def find_contact_by_id(self, id):
+    def find_contact_by_id(self, contact_id):
         for contact in self._dialogs[1]:
-            if contact.id == id:
+            if contact.id == contact_id:
                 return contact
         return None
 
@@ -121,27 +119,29 @@ class Client(Thread):
         self._thread_auth()
         self._global_lock.acquire()
         self._dialogs = self._tgClient.get_dialogs(1000)
-        global client
-        client = self
-        self._sender_module = importlib.import_module(config.Module)
+        if self.character.config.module:
+            self._sender_module = importlib.import_module(self.character.config.module)
         self._cwbot = self.find_contact_by_username(config.CWBot)
         self._captchabot = self.find_contact_by_username(config.CaptchaBot)
         self._tradebot = self.find_contact_by_username(config.TradeBot)
-        self._orderbot = self.find_contact_by_username(config.OrderBot)
-        self._databot = self.find_contact_by_username(config.DataBot)
-        self._admin = self.find_contact_by_username(config.Admin)
-        self._ordergroup = self.find_contact_by_name(config.OrderChat)
+        self._orderbot = self.find_contact_by_username(self.character.config.orderBot)
+        self._databot = self.find_contact_by_username(self.character.config.dataBot)
+        self._admin = self.find_contact_by_username(self.character.config.admin)
+        self._ordergroup = self.find_contact_by_name(self.character.config.orderChat)
         if not self._admin:
             # Если юзера-админа не нашли, то админим сами
             self._admin = self._tgClient.session.user
-        self._sender = self._sender_module.Sender(self._tgClient, cwbot=self._cwbot, captchabot=self._captchabot,
-                                                  tradebot=self._tradebot, orderbot=self._orderbot,
-                                                  databot=self._databot, admin=self._admin, ordergroup=self._ordergroup)
+        if self._sender_module:
+            self._sender = self._sender_module.Sender(self._tgClient, cwbot=self._cwbot, captchabot=self._captchabot,
+                                                      tradebot=self._tradebot, orderbot=self._orderbot,
+                                                      databot=self._databot, admin=self._admin,
+                                                      ordergroup=self._ordergroup)
         self.handle()
         self._global_lock.release()
 
         while True:
-            self._sender.send_order(self._character.ask_action())
+            if self._sender:
+                self._sender.send_order(self.character.ask_action())
             sleep(random.randint(2, 5))
 
     def _thread_auth(self):
@@ -196,9 +196,7 @@ class Client(Thread):
         except RPCError as e:
             raise e
 
-    @staticmethod
-    def msg_handler(msg):
-        global client
+    def msg_handler(self, msg):
         if type(msg) is UpdatesTg:
             for upd in msg.updates:
                 if type(upd) is UpdateNewChannelMessage:
@@ -209,34 +207,29 @@ class Client(Thread):
                             if chat.id == message.to_id.channel_id:
                                 channel = chat
                         if message.out:
-                            print('Long answer\nYou sent {} to chat #{}'.format(message.message,
-                                                                                message.to_id.channel_id))
+                            pass
                         else:
-                            if channel and client.channel_in_list(channel):
-                                if client.can_order_id(message.from_id):
-                                    client._character.set_order(message.message)
+                            if channel and self.channel_in_list(channel):
+                                if self.can_order_id(message.from_id):
+                                    self.character.set_order(message.message)
                 elif type(upd) is UpdateNewMessage:
                     message = upd.message
                     if type(message) is Message:
                         if message.out:
                             if message.to_id.user_id == message.from_id:
-                                client._character.set_order(message.message)
-                            print('Long answer\nYou sent {} to user #{}'.format(message.message,
-                                                                                message.to_id.user_id))
-                        elif client.id_in_list(message.from_id):
-                            if message.from_id == client._admin.id:
-                                client._character.set_order(message.message)
-                            elif message.from_id == client._cwbot.id:
-                                if re.search(regexp.main_hero, message.message):
-                                    client._character.parse_profile(message.message)
-                            print('Long answer\n[User #{} sent {}]'.format(
-                                message.from_id,
-                                message.message))
+                                self.character.set_order(message.message)
+                        elif self.id_in_list(message.from_id):
+                            if message.from_id == self.can_order_id(message.from_id):
+                                print('Получли приказ')
+                                self.character.set_order(message.message)
+                            elif message.from_id == self._cwbot.id:
+                                print('Получили сообщение от ChatWars')
+                                self.character.parse_message(message.message)
         elif type(msg) is UpdateShortMessage:
             if msg.out:
                 print('You sent {} to user #{}'.format(msg.message,
                                                        msg.user_id))
-            elif client.id_in_list(msg.user_id):
+            elif self.id_in_list(msg.user_id):
                 print('[User #{} sent {}]'.format(msg.user_id,
                                                   msg.message))
 
@@ -244,7 +237,7 @@ class Client(Thread):
             if msg.out:
                 print('You sent {} to chat #{}'.format(msg.message,
                                                        msg.chat_id))
-            elif client.id_in_list(msg.from_id):
+            elif self.id_in_list(msg.from_id):
                 print('[Chat #{}, user #{} sent {}]'.format(
                     msg.chat_id, msg.from_id,
                     msg.message))

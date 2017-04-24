@@ -57,56 +57,75 @@ class Pet:
 
 
 class Configuration:
-    autoArena = True
-    autoQuest = True
+    autoArena = False
+    autoQuest = False
     defaultQuest = Quest.LES
-    autoBattle = True
+    autoBattle = False
     autoDonate = False
     donateTill = 0
-    autoPet = True
-    autoCaptcha = True
+    autoPet = False
+    autoCaptcha = False
     autoCraft = False
     autoEquip = False
     autoTrade = False
-    autoLevelUp = True
+    autoLevelUp = False
     # Если levelUpAtk True, то уровень будет вкачиваться в атаку, если False в защиту.
     levelUpAtk = True
+    orderBot = ''
+    orderChat = ''
+    dataBot = ''
+    admin = ''
+    module = ''
 
     def serialize(self):
         conf_dict = {'autoArena': self.autoArena, 'autoQuest': self.autoQuest, 'autoBattle': self.autoBattle,
                      'autoDonate': self.autoDonate, 'donateTill': self.donateTill, 'autoPet': self.autoPet,
                      'autoCaptcha': self.autoCaptcha, 'autoCraft': self.autoCraft, 'autoEquip': self.autoEquip,
-                     'autoTrade': self.autoTrade, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk}
+                     'autoTrade': self.autoTrade, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk,
+                     'defaultQuest': self.defaultQuest.value, 'orderBot': self.orderBot, 'orderChat': self.orderChat,
+                     'dataBot': self.dataBot, 'admin': self.admin, 'module': self.module}
         return conf_dict
 
     @staticmethod
     def deserialize(conf_dict):
         conf_keys = conf_dict.keys()
         conf = Configuration()
-        if 'name' in conf_keys:
-            conf.name = conf_dict['name']
-        if 'race' in conf_keys:
-            conf.race = conf_dict['race']
-        if 'level' in conf_keys:
-            conf.level = conf_dict['level']
-        if 'exp' in conf_keys:
-            conf.exp = conf_dict['exp']
-        if 'needExp' in conf_keys:
-            conf.needExp = conf_dict['needExp']
-        if 'eatStatus' in conf_keys:
-            conf.eatStatus = conf_dict['eatStatus']
-        if 'playStatus' in conf_keys:
-            conf.playStatus = conf_dict['playStatus']
-        if 'bathStatus' in conf_keys:
-            conf.bathStatus = conf_dict['bathStatus']
-        if 'profit' in conf_keys:
-            conf.profit = conf_dict['profit']
-        if 'foodInStock' in conf_keys:
-            conf.foodInStock = conf_dict['foodInStock']
+        if 'autoArena' in conf_keys:
+            conf.autoArena = conf_dict['autoArena']
+        if 'autoQuest' in conf_keys:
+            conf.autoQuest = conf_dict['autoQuest']
+        if 'autoBattle' in conf_keys:
+            conf.autoBattle = conf_dict['autoBattle']
+        if 'autoDonate' in conf_keys:
+            conf.autoDonate = conf_dict['autoDonate']
+        if 'donateTill' in conf_keys:
+            conf.donateTill = conf_dict['donateTill']
+        if 'autoPet' in conf_keys:
+            conf.autoPet = conf_dict['autoPet']
+        if 'autoCaptcha' in conf_keys:
+            conf.autoCaptcha = conf_dict['autoCaptcha']
+        if 'autoCraft' in conf_keys:
+            conf.autoCraft = conf_dict['autoCraft']
+        if 'autoEquip' in conf_keys:
+            conf.autoEquip = conf_dict['autoEquip']
+        if 'autoTrade' in conf_keys:
+            conf.autoTrade = conf_dict['autoTrade']
         if 'autoLevelUp' in conf_keys:
             conf.autoLevelUp = conf_dict['autoLevelUp']
         if 'levelUpAtk' in conf_keys:
             conf.levelUpAtk = conf_dict['levelUpAtk']
+        if 'defaultQuest' in conf_keys:
+            conf.defaultQuest = Quest(conf_dict['defaultQuest'])
+        if 'orderBot' in conf_keys:
+            conf.orderBot = conf_dict['orderBot']
+        if 'orderChat' in conf_keys:
+            conf.orderChat = conf_dict['orderChat']
+        if 'dataBot' in conf_keys:
+            conf.dataBot = conf_dict['dataBot']
+        if 'admin' in conf_keys:
+            conf.admin = conf_dict['admin']
+        if 'module' in conf_keys:
+            conf.module = conf_dict['module']
         return conf
 
 
@@ -162,7 +181,7 @@ class Character:
     arenaMax = 0
     arenaWalked = 0
     castle = Castle.UNDEFINED
-    alliance = Castle.UNDEFINED
+    alliance = []
     status = CharacterStatus.UNDEFINED
     config = Configuration()
     timers = Timers()
@@ -195,39 +214,56 @@ class Character:
         self._config_file.write_text(config, 'utf8')
 
     def ask_action(self):
+        if self.status == CharacterStatus.UNDEFINED:
+            return [CharacterAction.WAIT]
         if (self.status.value[0] == CharacterAction.ATTACK or self.status.value[0] == CharacterAction.DEFENCE) and \
-                        datetime.now().time().hour in [0, 4, 8, 12, 16, 20] and \
-                        datetime.now().time().minute > 5:
+                (datetime.now().time().hour in [0, 4, 8, 12, 16, 20] and datetime.now().time().minute > 5 or
+                 datetime.now().time().hour not in [23, 3, 7, 11, 15, 19] or
+                 datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and datetime.now().time().minute < 40):
             self.status = CharacterStatus.REST
             self._currentOrder = [CharacterAction.DEFENCE, self.castle]
-        if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) and \
-                        datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and\
-                        datetime.now().time().minute > 40:
-            self.status = CharacterStatus([CharacterAction.ATTACK, self._currentOrder])
-            return self.status.value
         if self.status == CharacterStatus.REST:
-            if self.timers.lastProfileUpdate + 3600 < time.time() or self._needProfileRequest:
+            if self.status != CharacterStatus(self._currentOrder) and \
+                            datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and \
+                            datetime.now().time().minute >= 40 and \
+                            self.config.autoBattle:
+                self.status = CharacterStatus(self._currentOrder)
+                return self.status.value
+            elif self.timers.lastProfileUpdate + 3600 < time.time() and self.config.autoQuest or \
+                    self._needProfileRequest:
                 self._needProfileRequest = False
                 self.status = CharacterStatus.WAITING_DATA
                 return [CharacterAction.GET_DATA]
-            elif self.stamina > 0 and self.config.defaultQuest == Quest.LES:
+            elif self.config.autoQuest and \
+                    (self.stamina >= 1 and self.config.defaultQuest == Quest.LES or
+                     self.stamina >= 2 and (self.config.defaultQuest == Quest.CAVE or
+                                            self.config.defaultQuest == Quest.COW)):
                 self.timers.lastQuest = time.time() + randint(10, 180)
-                self.status = CharacterStatus.QUEST_LES
-                self.stamina -= 1
+                self.status = CharacterStatus([CharacterAction.QUEST, self.config.defaultQuest])
+                self.stamina -= 1 if self.config.defaultQuest == Quest.LES else 2
                 self.save_config_file()
-                return [CharacterAction.QUEST, self.config.defaultQuest]
+                return self.status.value
         return [CharacterAction.WAIT]
 
-    def set_order(self, order):
+    def set_order(self, target):
         try:
-            self._currentOrder = Castle(order)
-            if self.status != CharacterStatus([CharacterAction.ATTACK, self._currentOrder]) or \
-                            self.status != CharacterStatus([CharacterAction.DEFENCE, self._currentOrder]):
+            if Castle(target) == self.castle or Castle(target) in self.alliance:
+                order = CharacterAction.DEFENCE
+            else:
+                order = CharacterAction.ATTACK
+            self._currentOrder = [order, Castle(target)]
+            if self.status != CharacterStatus(self._currentOrder) or \
+                    self.status != CharacterStatus(self._currentOrder):
                 self.status = CharacterStatus.REST
         except ValueError:
             pass
 
-    def parse_profile(self, profile):
+    def parse_message(self, message):
+        if re.search(regexp.main_hero, message):
+            print('Получили профиль')
+            self._parse_profile(message)
+
+    def _parse_profile(self, profile):
         parsed_data = re.search(regexp.main_hero, profile)
         if parsed_data.group(1):
             self._needLevelUp = True
@@ -246,7 +282,7 @@ class Character:
         if not self.stock:
             self._needStockRequest = True
         if (not self.equip or not self.backpack) \
-                and str(parsed_data.group(16)) != '[-]'\
+                and str(parsed_data.group(16)) != '[-]' \
                 and int(parsed_data.group(17)) != 0:
             self._needInvRequest = True
         if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
@@ -298,10 +334,10 @@ class Character:
                      'attack': self.attack, 'defence': self.defence, 'equip': self.equip, 'backpack': self.backpack,
                      'stockSize': self.stockSize, 'stock': self.stock, 'exp': self.exp, 'needExp': self.needExp,
                      'arenaWins': self.arenaWins, 'arenaMax': self.arenaMax, 'arenaWalked': self.arenaWalked,
-                     'castle': self.castle.value, 'alliance': self.alliance.value,
+                     'castle': self.castle.value, 'alliance': self.alliance,
                      'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize(),
                      'timers': self.timers.serialize(), 'maxStamina': self.maxStamina}
-        return json.dumps(char_dict, ensure_ascii=False)
+        return json.dumps(char_dict, ensure_ascii=False, indent=4)
 
     def deserialize(self, json_str):
         char_dict = json.loads(json_str)
@@ -337,11 +373,11 @@ class Character:
         if 'arenaWalked' in keys:
             self.arenaWalked = char_dict['arenaWalked']
         if 'status' in keys:
-            self.status = char_dict['status']
+            self.status = CharacterStatus(char_dict['status'])
         if 'castle' in keys:
-            self.castle = char_dict['castle']
+            self.castle = Castle(char_dict['castle'])
         if 'alliance' in keys:
-            self.alliance = Castle(char_dict['alliance'])
+            self.alliance = char_dict['alliance']
         if 'pet' in keys and char_dict['pet']:
             self.pet = Pet.deserialize(char_dict['pet'])
         if 'config' in keys and char_dict['config']:
@@ -350,4 +386,3 @@ class Character:
             self.timers = Timers.deserialize(char_dict['timers'])
         if 'maxStamina' in keys:
             self.maxStamina = char_dict['maxStamina']
-
