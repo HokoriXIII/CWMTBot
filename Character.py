@@ -280,15 +280,19 @@ class Character:
         if re.search(regexp.main_hero, message):
             print('Получили профиль')
             self._parse_profile(message)
-        if re.search(regexp.captcha, message):
+        elif re.search(regexp.captcha, message):
             print('Словили капчу =(')
             if re.search(regexp.captcha, message).group(1):
                 self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
             self.status = CharacterStatus.NEED_CAPTCHA
-        if re.search(regexp.uncaptcha, message):
+        elif re.search(regexp.uncaptcha, message):
             print('Решили капчу =)')
+            self._captchaMsg = ''
             self.status = CharacterStatus.UNDEFINED
             self._needProfileRequest = True
+        elif self.status.value[0] == CharacterAction.QUEST and t.time() - self.timers.lastQuest > 60*5:
+            print('Вероятно вернулись с квеста')
+            self.status = CharacterStatus.REST
 
     def _parse_profile(self, profile):
         parsed_data = re.search(regexp.main_hero, profile)
