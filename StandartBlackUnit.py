@@ -19,6 +19,10 @@ class Sender:
         self._admin = admin
         self._ordergroup = ordergroup
 
+    def send_captcha(self, captcha):
+        sleep(randint(8, 20))
+        self._tgClient.send_message(self._cwbot, captcha)
+
     def send_order(self, order):
         if order[0] == CharacterAction.ATTACK:
             result = self._tgClient.invoke(
@@ -52,9 +56,10 @@ class Sender:
             self._tgClient.send_message(self._cwbot, order[1].value)
             sleep(randint(5, 10))
         elif order[0] == CharacterAction.CAPTCHA:
-            self._tgClient.send_message(self._admin, 'Там с капчей траблы...')
+            self._tgClient.send_message(self._captchabot, order[1])
+            sleep(28)
         elif order[0] == CharacterAction.GET_DATA:
-            self._tgClient.send_message(self._cwbot, '🏅Герой')
+            self._tgClient.send_message(self._cwbot, order[1].value)
             sleep(randint(5, 10))
         else:
             return

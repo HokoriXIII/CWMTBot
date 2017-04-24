@@ -199,16 +199,16 @@ class Character:
 
     _timezone = timezone('Europe/Moscow')
 
+    _captchaMsg = ''
+
     def __init__(self, client):
         # self._client = client
         self._name = client
         self._config_file = Path(self._name + '.character')
         if self._config_file.is_file():
             self.reload_config_file()
-            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
-        else:
-            self._needProfileRequest = True
-            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
+        self._needProfileRequest = True
+        self._currentOrder = [CharacterAction.DEFENCE, self.castle]
 
     def reload_config_file(self):
         self.deserialize(self._config_file.read_text('utf8'))
@@ -222,14 +222,19 @@ class Character:
         for interval in self.config.sleep_intervals:
             time_start = time(interval[0][0], interval[0][1])
             time_end = time(interval[1][0], interval[1][1])
-            if time_start <= time_end and time_start <= now <= time_end or time_start <= now or now <= time_end:
+            if time_start <= time_end and time_start <= now <= time_end or \
+                    not time_start <= time_end and (time_start <= now or now <= time_end):
                 return True
         return False
 
     def ask_action(self):
         now = datetime.now().astimezone(self._timezone)
-        if self.status == CharacterStatus.UNDEFINED:
-            return [CharacterAction.WAIT]
+        if self.status == CharacterStatus.NEED_CAPTCHA:
+            return [self.status.value, self._captchaMsg]
+        if self._needProfileRequest and self.status != CharacterStatus.WAITING_DATA_CHARACTER:
+            self._needProfileRequest = False
+            self.status = CharacterStatus.WAITING_DATA_CHARACTER
+            return self.status.value
         if self.time_to_sleep():
             return [CharacterAction.WAIT]
         if self.status != CharacterStatus(self._currentOrder) and \
@@ -244,11 +249,9 @@ class Character:
             self.status = CharacterStatus.REST
             self._currentOrder = [CharacterAction.DEFENCE, self.castle]
         if self.status == CharacterStatus.REST:
-            if self.timers.lastProfileUpdate + 3600 < t.time() and self.config.autoQuest or \
-                    self._needProfileRequest:
-                self._needProfileRequest = False
-                self.status = CharacterStatus.WAITING_DATA
-                return [CharacterAction.GET_DATA]
+            if self.config.autoQuest and self.timers.lastProfileUpdate + 3600 < t.time():
+                self.status = CharacterStatus.WAITING_DATA_CHARACTER
+                return self.status.value
             elif self.config.autoQuest and \
                     (self.stamina >= 1 and self.config.defaultQuest == Quest.LES or
                      self.stamina >= 2 and (self.config.defaultQuest == Quest.CAVE or
@@ -277,6 +280,15 @@ class Character:
         if re.search(regexp.main_hero, message):
             print('Получили профиль')
             self._parse_profile(message)
+        if re.search(regexp.captcha, message):
+            print('Словили капчу =(')
+            if re.search(regexp.captcha, message).group(1):
+                self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
+            self.status = CharacterStatus.NEED_CAPTCHA
+        if re.search(regexp.uncaptcha, message):
+            print('Решили капчу =)')
+            self.status = CharacterStatus.UNDEFINED
+            self._needProfileRequest = True
 
     def _parse_profile(self, profile):
         parsed_data = re.search(regexp.main_hero, profile)
@@ -311,12 +323,6 @@ class Character:
     def _parse_status(self, status):
         if StatusText.REST.value in status:
             return CharacterStatus.REST
-        elif StatusText.LES.value in status:
-            return CharacterStatus.QUEST_LES
-        elif StatusText.CAVE.value in status:
-            return CharacterStatus.QUEST_CAVE
-        elif StatusText.COW.value in status:
-            return CharacterStatus.QUEST_COW
         elif StatusText.ARENA.value in status:
             return CharacterStatus.ARENA
         elif StatusText.ATTACK.value in status:
@@ -325,6 +331,12 @@ class Character:
         elif StatusText.DEFENCE.value in status:
             castle = self._find_castle(status)
             return CharacterStatus([CharacterAction.DEFENCE, castle])
+        elif StatusText.LES.value in status:
+            return CharacterStatus.QUEST_LES
+        elif StatusText.CAVE.value in status:
+            return CharacterStatus.QUEST_CAVE
+        elif StatusText.COW.value in status:
+            return CharacterStatus.QUEST_COW
         return CharacterStatus.UNDEFINED
 
     def _find_castle(self, somestr):

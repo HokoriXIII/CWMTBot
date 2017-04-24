@@ -213,6 +213,9 @@ class Client(Thread):
                             elif message.from_id == self._cwbot.id:
                                 print('Получили сообщение от ChatWars')
                                 self.character.parse_message(message.message)
+                            elif message.from_id == self._captchabot.id:
+                                print('Получили сообщение от капчебота, пересылаем в ChatWars')
+                                self._sender.send_captcha(message.message)
         elif type(msg) is UpdateShortMessage:
             if msg.out:
                 print('You sent {} to user #{}'.format(msg.message,

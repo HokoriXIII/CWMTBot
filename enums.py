@@ -102,12 +102,13 @@ class CharacterStatus(Enum):
     DEFENCE_GORY = [CharacterAction.DEFENCE, Castle.GORY]
     DEFENCE_UNDEFINED = [CharacterAction.DEFENCE, Castle.UNDEFINED]
     ARENA = [CharacterAction.ARENA]
-    CRAFTING = [CharacterAction.CRAFT]
+    CRAFTING = CharacterAction.CRAFT
     WAITING_DATA_CHARACTER = [CharacterAction.GET_DATA, DataRequests.CHARACTER]
     WAITING_DATA_HERO = [CharacterAction.GET_DATA, DataRequests.HERO]
     WAITING_DATA_PET = [CharacterAction.GET_DATA, DataRequests.PET]
     WAITING_DATA_INV = [CharacterAction.GET_DATA, DataRequests.INV]
     WAITING_DATA_STOCK = [CharacterAction.GET_DATA, DataRequests.STOCK]
+    NEED_CAPTCHA = CharacterAction.CAPTCHA
 
 
 class Buttons(Enum):
