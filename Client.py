@@ -3,21 +3,13 @@ import importlib
 from telethon import TelegramClient, RPCError
 from telethon.telegram_client import Session
 import config
-from Character import Character, Castle
+from Character import Character
 from multiprocessing import RLock, Lock
 from threading import Thread, Timer
 from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, UpdatesTg, UpdateNewChannelMessage, \
     UpdateNewMessage, Message, User, Channel
-from telethon.tl.functions.messages import GetInlineBotResultsRequest, SendInlineBotResultRequest
-from telethon.utils import get_input_peer
-import telethon.helpers as utils
 from time import sleep
 import random
-import pytz
-from pytz import timezone
-from datetime import datetime, timedelta, time
-import re
-import regexp
 
 
 class Client(Thread):
@@ -25,9 +17,6 @@ class Client(Thread):
     _code_lock = Lock()
     _pass_lock = Lock()
     _global_lock = RLock()
-    _battle_hours = [0, 4, 8, 12, 16, 20]
-    _sleep_intervals = [(time(0, 10), time(3, 50)),
-                        (time(4, 15), time(7, 45))]
 
     def __init__(self, session):
         super().__init__()
@@ -51,7 +40,6 @@ class Client(Thread):
         self._orderbot = None
         self._databot = None
         self._dialogs = None
-        self._timezone = timezone('Europe/Moscow')
         self._sender = None
         self._sender_module = None
 

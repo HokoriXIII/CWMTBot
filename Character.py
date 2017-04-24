@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
 import json, enum
-import time
+import time as t
 import re
 import regexp
 import pytz
 from pytz import timezone
-from datetime import datetime, timedelta
+from datetime import datetime, time
 from enums import *
 from random import randint
 
@@ -76,6 +76,8 @@ class Configuration:
     dataBot = ''
     admin = ''
     module = ''
+    sleep_intervals = [[[0, 10], [3, 50]],
+                       [[4, 15], [7, 45]]]
 
     def serialize(self):
         conf_dict = {'autoArena': self.autoArena, 'autoQuest': self.autoQuest, 'autoBattle': self.autoBattle,
@@ -83,7 +85,8 @@ class Configuration:
                      'autoCaptcha': self.autoCaptcha, 'autoCraft': self.autoCraft, 'autoEquip': self.autoEquip,
                      'autoTrade': self.autoTrade, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk,
                      'defaultQuest': self.defaultQuest.value, 'orderBot': self.orderBot, 'orderChat': self.orderChat,
-                     'dataBot': self.dataBot, 'admin': self.admin, 'module': self.module}
+                     'dataBot': self.dataBot, 'admin': self.admin, 'module': self.module,
+                     'sleep_intervals': self.sleep_intervals}
         return conf_dict
 
     @staticmethod
@@ -126,11 +129,12 @@ class Configuration:
             conf.admin = conf_dict['admin']
         if 'module' in conf_keys:
             conf.module = conf_dict['module']
+        if 'sleep_intervals' in conf_keys:
+            conf.sleep_intervals = conf_dict['sleep_intervals']
         return conf
 
 
 class Timers:
-    lastArenaStart = 0.0
     lastArenaEnd = 0.0
     lastQuest = 0.0
     lastProfileUpdate = 0.0
@@ -138,17 +142,15 @@ class Timers:
     lastEquipUpdate = 0.0
 
     def serialize(self):
-        time_dict = {'lastArenaStart': self.lastArenaStart, 'lastQuest': self.lastQuest,
-                     'lastProfileUpdate': self.lastProfileUpdate, 'lastArenaEnd': self.lastArenaEnd,
-                     'lastStockUpdate': self.lastStockUpdate, 'lastEquipUpdate': self.lastEquipUpdate}
+        time_dict = {'lastQuest': self.lastQuest, 'lastProfileUpdate': self.lastProfileUpdate,
+                     'lastArenaEnd': self.lastArenaEnd, 'lastStockUpdate': self.lastStockUpdate,
+                     'lastEquipUpdate': self.lastEquipUpdate}
         return time_dict
 
     @staticmethod
     def deserialize(timers_dict):
         timers = Timers()
         keys = timers_dict.keys()
-        if 'lastArenaStart' in keys:
-            timers.lastArenaStart = timers_dict['lastArenaStart']
         if 'lastArenaEnd' in keys:
             timers.lastArenaEnd = timers_dict['lastArenaEnd']
         if 'lastQuest' in keys:
@@ -195,6 +197,8 @@ class Character:
     _needInvRequest = False
     _needLevelUp = False
 
+    _timezone = timezone('Europe/Moscow')
+
     def __init__(self, client):
         # self._client = client
         self._name = client
@@ -213,23 +217,34 @@ class Character:
         config = self.serialize()
         self._config_file.write_text(config, 'utf8')
 
+    def time_to_sleep(self):
+        now = datetime.now().time()
+        for interval in self.config.sleep_intervals:
+            time_start = time(interval[0][0], interval[0][1])
+            time_end = time(interval[1][0], interval[1][1])
+            if time_start <= time_end and time_start <= now <= time_end or time_start <= now or now <= time_end:
+                return True
+        return False
+
     def ask_action(self):
+        now = datetime.now().astimezone(self._timezone)
         if self.status == CharacterStatus.UNDEFINED:
             return [CharacterAction.WAIT]
+        if self.time_to_sleep():
+            return [CharacterAction.WAIT]
+        if self.status != CharacterStatus(self._currentOrder) and \
+                now.time().hour in [23, 3, 7, 11, 15, 19] and now.time().minute >= 40 and \
+                self.config.autoBattle:
+            self.status = CharacterStatus(self._currentOrder)
+            return self.status.value
         if (self.status.value[0] == CharacterAction.ATTACK or self.status.value[0] == CharacterAction.DEFENCE) and \
-                (datetime.now().time().hour in [0, 4, 8, 12, 16, 20] and datetime.now().time().minute > 5 or
-                 datetime.now().time().hour not in [23, 3, 7, 11, 15, 19] or
-                 datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and datetime.now().time().minute < 40):
+                (now.time().hour in [0, 4, 8, 12, 16, 20] and now.time().minute > 5 or
+                 now.time().hour not in [23, 3, 7, 11, 15, 19] or
+                 now.time().hour in [23, 3, 7, 11, 15, 19] and now.time().minute < 40):
             self.status = CharacterStatus.REST
             self._currentOrder = [CharacterAction.DEFENCE, self.castle]
         if self.status == CharacterStatus.REST:
-            if self.status != CharacterStatus(self._currentOrder) and \
-                            datetime.now().time().hour in [23, 3, 7, 11, 15, 19] and \
-                            datetime.now().time().minute >= 40 and \
-                            self.config.autoBattle:
-                self.status = CharacterStatus(self._currentOrder)
-                return self.status.value
-            elif self.timers.lastProfileUpdate + 3600 < time.time() and self.config.autoQuest or \
+            if self.timers.lastProfileUpdate + 3600 < t.time() and self.config.autoQuest or \
                     self._needProfileRequest:
                 self._needProfileRequest = False
                 self.status = CharacterStatus.WAITING_DATA
@@ -238,7 +253,7 @@ class Character:
                     (self.stamina >= 1 and self.config.defaultQuest == Quest.LES or
                      self.stamina >= 2 and (self.config.defaultQuest == Quest.CAVE or
                                             self.config.defaultQuest == Quest.COW)):
-                self.timers.lastQuest = time.time() + randint(10, 180)
+                self.timers.lastQuest = t.time() + randint(10, 180)
                 self.status = CharacterStatus([CharacterAction.QUEST, self.config.defaultQuest])
                 self.stamina -= 1 if self.config.defaultQuest == Quest.LES else 2
                 self.save_config_file()
@@ -288,7 +303,7 @@ class Character:
         if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
             self._needPetRequest = True
         self.status = self._parse_status(parsed_data.group(23))
-        self.timers.lastProfileUpdate = time.time() + randint(50, 3600)
+        self.timers.lastProfileUpdate = t.time() + randint(50, 3600)
         self.save_config_file()
         if self._currentOrder[1] == Castle.UNDEFINED:
             self._currentOrder = [CharacterAction.DEFENCE, self.castle]
