@@ -42,14 +42,14 @@ class BaseUnit(Thread):
         self._tgClient.add_update_handler(self._receive)
 
     def run(self):
-        Timer(0, self._worker)
+        Timer(1, self._worker).start()
         while True:
             self._send()
             sleep(0.1)
 
     def _worker(self):
         self._action()
-        Timer(randint(5, 7), self._worker)
+        Timer(randint(5, 7), self._worker).start()
 
     def _send(self):
         self._lock.acquire()
