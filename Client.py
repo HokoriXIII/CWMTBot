@@ -207,7 +207,7 @@ class Client(Thread):
                             if message.to_id.user_id == message.from_id:
                                 self.character.set_order(message.message)
                         elif self.id_in_list(message.from_id):
-                            if message.from_id == self.can_order_id(message.from_id):
+                            if self.can_order_id(message.from_id):
                                 print('Получли приказ')
                                 self.character.set_order(message.message)
                             elif message.from_id == self._cwbot.id:
@@ -221,8 +221,15 @@ class Client(Thread):
                 print('You sent {} to user #{}'.format(msg.message,
                                                        msg.user_id))
             elif self.id_in_list(msg.user_id):
-                print('[User #{} sent {}]'.format(msg.user_id,
-                                                  msg.message))
+                if self.can_order_id(msg.user_id):
+                    print('Получли приказ')
+                    self.character.set_order(msg.message)
+                elif msg.user_id == self._cwbot.id:
+                    print('Получили сообщение от ChatWars')
+                    self.character.parse_message(msg.message)
+                elif msg.user_id == self._captchabot.id:
+                    print('Получили сообщение от капчебота, пересылаем в ChatWars')
+                    self._sender.send_captcha(msg.message)
 
         elif type(msg) is UpdateShortChatMessage:
             if msg.out:
