@@ -10,6 +10,8 @@ from random import randint
 from Character import Character
 from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, UpdatesTg, UpdateNewChannelMessage, \
     UpdateNewMessage, Message
+import re
+import regexp
 
 
 class Module(BaseUnit):
@@ -119,8 +121,9 @@ class Module(BaseUnit):
                                 self._character.set_order(message.message)
                             elif message.from_id == self._cwBot.id:
                                 print('Получили сообщение от ChatWars')
-                                self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
-                                                                            message.id, utils.generate_random_long()))
+                                if re.search(regexp.main_hero, message.message):
+                                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
+                                                                                message.id, utils.generate_random_long()))
                                 self._character.parse_message(message.message)
                             elif message.from_id == self._captchaBot.id:
                                 print('Получили сообщение от капчебота, пересылаем в ChatWars')

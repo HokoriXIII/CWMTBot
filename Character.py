@@ -305,7 +305,7 @@ class Character:
             self._captchaMsg = ''
             self.status = self._statusBeforeCaptcha
         elif self.status not in (CharacterStatus.UNDEFINED, CharacterStatus.NEED_CAPTCHA, CharacterStatus.CRAFTING) \
-                and self.status.value[0] == CharacterAction.QUEST and t.time() - self.timers.lastQuest > 60*5 + 180:
+                and self.status.value[0] == CharacterAction.QUEST and t.time() + 180 - self.timers.lastQuest > 60*5:
             print('Вероятно вернулись с квеста')
             self.status = CharacterStatus.REST
 
