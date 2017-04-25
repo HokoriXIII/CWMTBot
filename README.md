@@ -30,7 +30,7 @@
 3. Получить api_id и api_hash по адресу [my.telegram.org](https://my.telegram.org/)
 4. Создать папку для бота, перейти в неё в консоли и выполнить `git clone https://github.com/ruckus-dj/CWMTBot.git`.
 5. Зайти в созданную папку проводником/Finder/etc., создать файл с именем `config.py`
-и скопировать в него содержимое `demo_config.py`.
+и скопировать в него содержимое `demo_config.py`, изменив настройки под себя.
 6. Выполнить `python3 cli.py -a "<admin_username>" -m "<module_name>" -o "<order_bot_username>" -c "<squad_chat_title>" -d "<data_bot_username>"`\
 Где:\
 `<admin_username>` - юзернэйм админа бота\
