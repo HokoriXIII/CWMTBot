@@ -23,6 +23,7 @@ class Module(BaseUnit):
         self._append_to_send_queue(self._cwBot, captcha)
 
     def _send_order(self, order):
+        self._lock.acquire()
         if order[0] == CharacterAction.ATTACK:
             result = self._tgClient.invoke(
                 GetInlineBotResultsRequest(get_input_peer(self._orderBot),
@@ -56,8 +57,7 @@ class Module(BaseUnit):
             sleep(28)
         elif order[0] == CharacterAction.GET_DATA:
             self._append_to_send_queue(self._cwBot, order[1].value)
-        else:
-            return
+        self._lock.release()
 
     def _send_castle(self, castle):
         result = self._tgClient.invoke(
@@ -122,8 +122,11 @@ class Module(BaseUnit):
                             elif message.from_id == self._cwBot.id:
                                 print('Получили сообщение от ChatWars')
                                 if re.search(regexp.main_hero, message.message):
+                                    self._lock.acquire()
                                     self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
-                                                                                message.id, utils.generate_random_long()))
+                                                                                message.id,
+                                                                                utils.generate_random_long()))
+                                    self._lock.release()
                                 self._character.parse_message(message.message)
                             elif message.from_id == self._captchaBot.id:
                                 print('Получили сообщение от капчебота, пересылаем в ChatWars')
