@@ -54,7 +54,7 @@ class BaseUnit(Thread):
     def _send(self):
         self._lock.acquire()
         if len(self._send_queue):
-            user, message = self._send_queue.pop()
+            user, message = self._send_queue.pop(0)
             self._tgClient.send_message(user, message)
         self._lock.release()
 
