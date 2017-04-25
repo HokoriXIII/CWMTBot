@@ -200,6 +200,7 @@ class Character:
     _timezone = timezone('Europe/Moscow')
 
     _captchaMsg = ''
+    _statusBeforeCaptcha = CharacterStatus.UNDEFINED
 
     def __init__(self, client):
         # self._client = client
@@ -297,13 +298,14 @@ class Character:
             print('Словили капчу =(')
             if re.search(regexp.captcha, message).group(1):
                 self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
+            self._statusBeforeCaptcha = self.status
             self.status = CharacterStatus.NEED_CAPTCHA
         elif re.search(regexp.uncaptcha, message):
             print('Решили капчу =)')
             self._captchaMsg = ''
-            self.status = CharacterStatus.UNDEFINED
-            self._needProfileRequest = True
-        elif self.status.value[0] == CharacterAction.QUEST and t.time() - self.timers.lastQuest > 60*5:
+            self.status = self._statusBeforeCaptcha
+        elif self.status not in (CharacterStatus.UNDEFINED, CharacterStatus.NEED_CAPTCHA, CharacterStatus.CRAFTING) \
+                and self.status.value[0] == CharacterAction.QUEST and t.time() - self.timers.lastQuest > 60*5 + 180:
             print('Вероятно вернулись с квеста')
             self.status = CharacterStatus.REST
 
