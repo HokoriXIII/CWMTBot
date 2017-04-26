@@ -12,9 +12,18 @@ from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, Update
     UpdateNewMessage, Message
 import re
 import regexp
+import pytz
+from pytz import timezone
+from datetime import datetime
+import time as t
 
 
 class Module(BaseUnit):
+    _timezone = timezone('Europe/Moscow')
+
+    _captchaMsg = ''
+    _statusBeforeCaptcha = CharacterStatus.UNDEFINED
+    
     def __init__(self, tg_client: TelegramClient, character: Character):
         super().__init__(tg_client, character)
 
@@ -23,7 +32,6 @@ class Module(BaseUnit):
         self._append_to_send_queue(self._cwBot, captcha)
 
     def _send_order(self, order):
-        self._lock.acquire()
         if order[0] == CharacterAction.ATTACK:
             result = self._tgClient.invoke(
                 GetInlineBotResultsRequest(get_input_peer(self._orderBot),
@@ -57,7 +65,6 @@ class Module(BaseUnit):
             sleep(28)
         elif order[0] == CharacterAction.GET_DATA:
             self._append_to_send_queue(self._cwBot, order[1].value)
-        self._lock.release()
 
     def _send_castle(self, castle):
         result = self._tgClient.invoke(
@@ -91,9 +98,60 @@ class Module(BaseUnit):
                 return res
 
     def _action(self):
-        self._send_order(self._character.ask_action())
+        if self._character.status == CharacterStatus.NEED_CAPTCHA:
+            self._send_order([self._character.status.value, self._captchaMsg])
+
+        elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_CHARACTER:
+            self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
+            self._send_order(self._character.status.value)
+        elif self._character.time_to_sleep():
+            self._send_order([CharacterAction.WAIT])
+        elif self._character.time_to_battle() and self._character.status.value != self._character.currentOrder and \
+                self._character.config.autoBattle:
+            self._character.status = CharacterStatus(self._character.currentOrder)
+            self._send_order(self._character.status.value)
+        elif (self._character.status.value[0] == CharacterAction.ATTACK or
+                self._character.status.value[0] == CharacterAction.DEFENCE) and \
+                not self._character.time_to_battle():
+            self._character.status = CharacterStatus.REST
+            self._currentOrder = [CharacterAction.DEFENCE, self._character.castle]
+        elif self._character.status == CharacterStatus.REST:
+            if self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
+                self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
+                self._send_order(self._character.status.value)
+            elif self._character.config.autoQuest and \
+                    (self._character.stamina >= 1 and self._character.config.defaultQuest == Quest.LES or
+                     self._character.stamina >= 2 and (self._character.config.defaultQuest == Quest.CAVE or
+                                                       self._character.config.defaultQuest == Quest.COW)):
+                self._character.timers.lastQuest = t.time() + randint(10, 180)
+                self._character.status = CharacterStatus([CharacterAction.QUEST, self._character.config.defaultQuest])
+                self._character.stamina -= 1 if self._character.config.defaultQuest == Quest.LES else 2
+                self._character.save_config_file()
+                self._send_order(self._character.status.value)
+    
+    def parse_message(self, message):
+        if re.search(regexp.main_hero, message):
+            print('Получили профиль')
+            self._character.parse_profile(message)
+        elif re.search(regexp.captcha, message):
+            print('Словили капчу =(')
+            if re.search(regexp.captcha, message).group(1):
+                self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
+            self._statusBeforeCaptcha = self._character.status
+            self._character.status = CharacterStatus.NEED_CAPTCHA
+        elif re.search(regexp.uncaptcha, message):
+            print('Решили капчу =)')
+            self._captchaMsg = ''
+            self._character.status = self._statusBeforeCaptcha
+        elif self._character.status in (CharacterStatus.QUEST_LES,
+                                        CharacterStatus.QUEST_CAVE,
+                                        CharacterStatus.QUEST_COW) \
+                and t.time() + 180 - self._character.timers.lastQuest > 60*5:
+            print('Вероятно вернулись с квеста')
+            self._character.status = CharacterStatus.REST
 
     def _receive(self, msg):
+        self._lock.acquire()
         if type(msg) is UpdatesTg:
             for upd in msg.updates:
                 if type(upd) is UpdateNewChannelMessage:
@@ -122,12 +180,10 @@ class Module(BaseUnit):
                             elif message.from_id == self._cwBot.id:
                                 print('Получили сообщение от ChatWars')
                                 if re.search(regexp.main_hero, message.message):
-                                    self._lock.acquire()
                                     self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
                                                                                 message.id,
                                                                                 utils.generate_random_long()))
-                                    self._lock.release()
-                                self._character.parse_message(message.message)
+                                self.parse_message(message.message)
                             elif message.from_id == self._captchaBot.id:
                                 print('Получили сообщение от капчебота, пересылаем в ChatWars')
                                 self._send_captcha(message.message)
@@ -141,7 +197,7 @@ class Module(BaseUnit):
                     self._character.set_order(msg.message)
                 elif msg.user_id == self._cwBot.id:
                     print('Получили сообщение от ChatWars')
-                    self._character.parse_message(msg.message)
+                    self.parse_message(msg.message)
                 elif msg.user_id == self._captchaBot.id:
                     print('Получили сообщение от капчебота, пересылаем в ChatWars')
                     self._send_captcha(msg.message)
@@ -154,3 +210,5 @@ class Module(BaseUnit):
                 print('[Chat #{}, user #{} sent {}]'.format(
                     msg.chat_id, msg.from_id,
                     msg.message))
+
+        self._lock.release()

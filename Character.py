@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
-import json, enum
+import json
 import time as t
 import re
 import regexp
-import pytz
-from pytz import timezone
 from datetime import datetime, time
 from enums import *
 from random import randint
@@ -190,17 +188,19 @@ class Character:
     gold = 0
     donateGold = 0
 
-    _needProfileRequest = False
+    needProfile = False
     _needHeroRequest = False
     _needPetRequest = False
     _needStockRequest = False
     _needInvRequest = False
     _needLevelUp = False
 
-    _timezone = timezone('Europe/Moscow')
-
-    _captchaMsg = ''
-    _statusBeforeCaptcha = CharacterStatus.UNDEFINED
+    _BATTLE_TIME = [[time(3, 45), time(4, 5)],
+                    [time(7, 45), time(8, 5)],
+                    [time(11, 45), time(12, 5)],
+                    [time(15, 45), time(16, 5)],
+                    [time(19, 45), time(20, 5)],
+                    [time(23, 45), time(0, 5)]]
 
     def __init__(self, client):
         # self._client = client
@@ -208,8 +208,8 @@ class Character:
         self._config_file = Path(self._name + '.character')
         if self._config_file.is_file():
             self.reload_config_file()
-        self._needProfileRequest = True
-        self._currentOrder = [CharacterAction.DEFENCE, self.castle]
+        self.needProfile = True
+        self.currentOrder = [CharacterAction.DEFENCE, self.castle]
 
     def set_opts(self, opts):
         for opt, arg in opts:
@@ -241,41 +241,13 @@ class Character:
                 return True
         return False
 
-    def ask_action(self):
-        now = datetime.now().astimezone(self._timezone)
-        if self.status == CharacterStatus.NEED_CAPTCHA:
-            return [self.status.value, self._captchaMsg]
-        if self._needProfileRequest and self.status != CharacterStatus.WAITING_DATA_CHARACTER:
-            self._needProfileRequest = False
-            self.status = CharacterStatus.WAITING_DATA_CHARACTER
-            return self.status.value
-        if self.time_to_sleep():
-            return [CharacterAction.WAIT]
-        if self.status != CharacterStatus(self._currentOrder) and \
-                now.time().hour in [23, 3, 7, 11, 15, 19] and now.time().minute >= 40 and \
-                self.config.autoBattle:
-            self.status = CharacterStatus(self._currentOrder)
-            return self.status.value
-        if (self.status.value[0] == CharacterAction.ATTACK or self.status.value[0] == CharacterAction.DEFENCE) and \
-                (now.time().hour in [0, 4, 8, 12, 16, 20] and now.time().minute > 5 or
-                 now.time().hour not in [23, 3, 7, 11, 15, 19] or
-                 now.time().hour in [23, 3, 7, 11, 15, 19] and now.time().minute < 40):
-            self.status = CharacterStatus.REST
-            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
-        if self.status == CharacterStatus.REST:
-            if self.config.autoQuest and self.timers.lastProfileUpdate + 3600 < t.time():
-                self.status = CharacterStatus.WAITING_DATA_CHARACTER
-                return self.status.value
-            elif self.config.autoQuest and \
-                    (self.stamina >= 1 and self.config.defaultQuest == Quest.LES or
-                     self.stamina >= 2 and (self.config.defaultQuest == Quest.CAVE or
-                                            self.config.defaultQuest == Quest.COW)):
-                self.timers.lastQuest = t.time() + randint(10, 180)
-                self.status = CharacterStatus([CharacterAction.QUEST, self.config.defaultQuest])
-                self.stamina -= 1 if self.config.defaultQuest == Quest.LES else 2
-                self.save_config_file()
-                return self.status.value
-        return [CharacterAction.WAIT]
+    def time_to_battle(self):
+        now = datetime.now().time()
+        for time_start, time_end in self._BATTLE_TIME:
+            if time_start <= time_end and time_start <= now <= time_end or \
+                            not time_start <= time_end and (time_start <= now or now <= time_end):
+                return True
+        return False
 
     def set_order(self, target):
         try:
@@ -283,33 +255,12 @@ class Character:
                 order = CharacterAction.DEFENCE
             else:
                 order = CharacterAction.ATTACK
-            self._currentOrder = [order, Castle(target)]
-            if self.status != CharacterStatus(self._currentOrder) or \
-                    self.status != CharacterStatus(self._currentOrder):
-                self.status = CharacterStatus.REST
+            self.currentOrder = [order, Castle(target)]
         except ValueError:
             pass
 
-    def parse_message(self, message):
-        if re.search(regexp.main_hero, message):
-            print('Получили профиль')
-            self._parse_profile(message)
-        elif re.search(regexp.captcha, message):
-            print('Словили капчу =(')
-            if re.search(regexp.captcha, message).group(1):
-                self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
-            self._statusBeforeCaptcha = self.status
-            self.status = CharacterStatus.NEED_CAPTCHA
-        elif re.search(regexp.uncaptcha, message):
-            print('Решили капчу =)')
-            self._captchaMsg = ''
-            self.status = self._statusBeforeCaptcha
-        elif self.status not in (CharacterStatus.UNDEFINED, CharacterStatus.NEED_CAPTCHA, CharacterStatus.CRAFTING) \
-                and self.status.value[0] == CharacterAction.QUEST and t.time() + 180 - self.timers.lastQuest > 60*5:
-            print('Вероятно вернулись с квеста')
-            self.status = CharacterStatus.REST
-
-    def _parse_profile(self, profile):
+    def parse_profile(self, profile):
+        self.needProfile = False
         parsed_data = re.search(regexp.main_hero, profile)
         if parsed_data.group(1):
             self._needLevelUp = True
@@ -336,8 +287,8 @@ class Character:
         self.status = self._parse_status(parsed_data.group(23))
         self.timers.lastProfileUpdate = t.time() + randint(50, 3600)
         self.save_config_file()
-        if self._currentOrder[1] == Castle.UNDEFINED:
-            self._currentOrder = [CharacterAction.DEFENCE, self.castle]
+        if self.currentOrder[1] == Castle.UNDEFINED:
+            self.currentOrder = [CharacterAction.DEFENCE, self.castle]
 
     def _parse_status(self, status):
         if StatusText.REST.value in status:
@@ -358,7 +309,8 @@ class Character:
             return CharacterStatus.QUEST_COW
         return CharacterStatus.UNDEFINED
 
-    def _find_castle(self, somestr):
+    @staticmethod
+    def _find_castle(somestr):
         if Icons.BLACK.value in somestr:
             return Castle.BLACK
         elif Icons.BLUE.value in somestr:
