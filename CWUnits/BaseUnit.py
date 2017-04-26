@@ -52,11 +52,9 @@ class BaseUnit(Thread):
         Timer(randint(5, 7), self._worker).start()
 
     def _send(self):
-        self._lock.acquire()
         if len(self._send_queue):
             user, message = self._send_queue.pop(0)
             self._tgClient.send_message(user, message)
-        self._lock.release()
 
     def _find_contact_by_id(self, contact_id):
         for contact in self._dialogs[1]:
@@ -79,33 +77,19 @@ class BaseUnit(Thread):
         return None
 
     def _id_in_list(self, tgid):
-        self._lock.acquire()
-        try:
-            return tgid == self._cwBot.id or \
-                   tgid == self._captchaBot.id or \
-                   tgid == self._orderBot.id or \
-                   tgid == self._tradeBot.id or \
-                   tgid == self._admin.id or \
-                   tgid == self._dataBot.id
-        finally:
-            self._lock.release()
+        return tgid == self._cwBot.id or \
+               tgid == self._captchaBot.id or \
+               tgid == self._orderBot.id or \
+               tgid == self._tradeBot.id or \
+               tgid == self._admin.id or \
+               tgid == self._dataBot.id
 
     def _can_order_id(self, tgid):
-        self._lock.acquire()
-        try:
-            return tgid == self._orderBot.id or \
-                   tgid == self._admin.id
-        finally:
-            self._lock.release()
+        return tgid == self._orderBot.id or \
+               tgid == self._admin.id
 
     def _channel_in_list(self, channel):
-        self._lock.acquire()
-        try:
-            return channel.title == self._orderGroup.title
-        finally:
-            self._lock.release()
+        return channel.title == self._orderGroup.title
 
     def _append_to_send_queue(self, user, message):
-        self._lock.acquire()
         self._send_queue.append([user, message])
-        self._lock.release()

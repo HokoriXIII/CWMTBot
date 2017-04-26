@@ -151,7 +151,6 @@ class Module(BaseUnit):
             self._character.status = CharacterStatus.REST
 
     def _receive(self, msg):
-        self._lock.acquire()
         if type(msg) is UpdatesTg:
             for upd in msg.updates:
                 if type(upd) is UpdateNewChannelMessage:
@@ -210,5 +209,3 @@ class Module(BaseUnit):
                 print('[Chat #{}, user #{} sent {}]'.format(
                     msg.chat_id, msg.from_id,
                     msg.message))
-
-        self._lock.release()
