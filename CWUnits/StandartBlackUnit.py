@@ -61,7 +61,9 @@ class Module(BaseUnit):
             self._append_to_send_queue(self._cwBot, order[1].value)
 
     def _send_castle(self, castle):
+        self._lock.release()
         sleep(random() * 2 + 1)
+        self._lock.acquire()
         result = self._tgClient.invoke(
             GetInlineBotResultsRequest(get_input_peer(self._orderBot),
                                        get_input_peer(self._cwBot),
