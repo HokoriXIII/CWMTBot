@@ -14,6 +14,7 @@ import regexp
 import enums
 from pytz import timezone
 import time as t
+from time import sleep
 
 
 class Module(BaseUnit):
@@ -60,6 +61,7 @@ class Module(BaseUnit):
             self._append_to_send_queue(self._cwBot, order[1].value)
 
     def _send_castle(self, castle):
+        sleep(random() * 2 + 1)
         result = self._tgClient.invoke(
             GetInlineBotResultsRequest(get_input_peer(self._orderBot),
                                        get_input_peer(self._cwBot),
