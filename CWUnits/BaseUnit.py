@@ -6,7 +6,7 @@ import config
 from multiprocessing import RLock
 from time import sleep
 from threading import Thread, Timer
-from random import randint
+from random import randint, random
 
 
 class BaseUnit(Thread):
@@ -39,22 +39,28 @@ class BaseUnit(Thread):
         if not self._admin:
             # Если юзера-админа не нашли, то админим сами
             self._admin = self._tgClient.session.user
-        self._tgClient.add_update_handler(self._receive)
+        self._tgClient.add_update_handler(self._locked_receive)
+
+    def _locked_receive(self, msg):
+        with self._lock:
+            self._receive(msg)
 
     def run(self):
         Timer(1, self._worker).start()
         while True:
+            sleep(random() * 3 + 2)
             self._send()
-            sleep(0.1)
 
     def _worker(self):
-        self._action()
+        with self._lock:
+            self._action()
         Timer(randint(5, 7), self._worker).start()
 
     def _send(self):
-        if len(self._send_queue):
-            user, message = self._send_queue.pop(0)
-            self._tgClient.send_message(user, message)
+        with self._lock:
+            if len(self._send_queue):
+                user, message = self._send_queue.pop(0)
+                self._tgClient.send_message(user, message)
 
     def _find_contact_by_id(self, contact_id):
         for contact in self._dialogs[1]:

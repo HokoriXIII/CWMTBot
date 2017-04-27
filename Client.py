@@ -80,7 +80,7 @@ class Client(Thread):
         return self._session
 
     def connect(self):
-        self._tgClient.connect()
+        self._tgClient.connect(True)
 
     def authorised(self):
         self._global_lock.acquire()

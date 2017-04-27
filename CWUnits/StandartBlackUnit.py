@@ -5,16 +5,13 @@ from telethon.tl.functions.messages import GetInlineBotResultsRequest, SendInlin
 from telethon.utils import get_input_peer
 import telethon.helpers as utils
 from enums import *
-from time import sleep
 from random import randint
 from Character import Character
 from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, UpdatesTg, UpdateNewChannelMessage, \
     UpdateNewMessage, Message
 import re
 import regexp
-import pytz
 from pytz import timezone
-from datetime import datetime
 import time as t
 
 
@@ -28,7 +25,6 @@ class Module(BaseUnit):
         super().__init__(tg_client, character)
 
     def _send_captcha(self, captcha):
-        sleep(randint(5, 10))
         self._append_to_send_queue(self._cwBot, captcha)
 
     def _send_order(self, order):
@@ -42,7 +38,6 @@ class Module(BaseUnit):
                 SendInlineBotResultRequest(get_input_peer(self._cwBot),
                                            utils.generate_random_long(),
                                            result.query_id, res.id))
-            sleep(randint(2, 5))
             self._send_castle(order[1])
         elif order[0] == CharacterAction.DEFENCE:
             result = self._tgClient.invoke(
@@ -54,15 +49,12 @@ class Module(BaseUnit):
                 SendInlineBotResultRequest(get_input_peer(self._cwBot),
                                            utils.generate_random_long(),
                                            result.query_id, res.id))
-            sleep(randint(2, 5))
             self._send_castle(order[1])
         elif order[0] == CharacterAction.QUEST:
             self._append_to_send_queue(self._cwBot, Buttons.QUEST.value)
-            sleep(randint(2, 5))
             self._append_to_send_queue(self._cwBot, order[1].value)
         elif order[0] == CharacterAction.CAPTCHA:
             self._append_to_send_queue(self._captchaBot, order[1])
-            sleep(28)
         elif order[0] == CharacterAction.GET_DATA:
             self._append_to_send_queue(self._cwBot, order[1].value)
 
