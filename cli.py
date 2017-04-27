@@ -21,11 +21,15 @@ def print_title(title):
 class CWCliBot:
 
     def __init__(self):
-        opts, args = getopt(sys.argv[1:], 'm:a:o:c:d:', ['module=', 'admin=', 'order=', 'chat=', 'data='])
+        opts, args = getopt(sys.argv[1:], 'm:a:o:c:d:s:', ['module=', 'admin=', 'order=', 'chat=', 'data=', 'session='])
         print_title('Поехали!')
-
-        session = input('Назови сессию (если залогинишься, '
-                        'потом не надо будет кучу всего вводить, только это название): ')
+        session = ''
+        for opt, arg in opts:
+            if opt in ('-s', '--session'):
+                session = arg
+        if session == '':
+            session = input('Назови сессию (если залогинишься, '
+                            'потом не надо будет кучу всего вводить, только это название): ')
 
         self.client = Client(session)
         self.client.set_opts(opts)
