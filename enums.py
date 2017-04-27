@@ -113,3 +113,6 @@ class CharacterStatus(Enum):
 
 class Buttons(Enum):
     QUEST = '🗺 Квесты'
+    LEVEL_UP = '/level_up'
+    UP_ATTACK = '+1 ⚔Атака'
+    UP_DEFENCE = '+1 🛡Защита'

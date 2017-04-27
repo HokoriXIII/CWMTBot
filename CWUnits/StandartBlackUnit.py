@@ -11,6 +11,7 @@ from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, Update
     UpdateNewMessage, Message
 import re
 import regexp
+import enums
 from pytz import timezone
 import time as t
 
@@ -92,7 +93,6 @@ class Module(BaseUnit):
     def _action(self):
         if self._character.status == CharacterStatus.NEED_CAPTCHA:
             self._send_order([self._character.status.value, self._captchaMsg])
-
         elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_CHARACTER:
             self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
             self._send_order(self._character.status.value)
@@ -108,6 +108,13 @@ class Module(BaseUnit):
             self._character.status = CharacterStatus.REST
             self._currentOrder = [CharacterAction.DEFENCE, self._character.castle]
         elif self._character.status == CharacterStatus.REST:
+            if self._character.needLevelUp and self._character.config.autoLevelUp:
+                self._append_to_send_queue(self._cwBot, enums.Buttons.LEVEL_UP)
+                if self._character.config.levelUpAtk:
+                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_ATTACK)
+                else:
+                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_DEFENCE)
+                self._character.needLevelUp = False
             if self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
                 self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
                 self._send_order(self._character.status.value)

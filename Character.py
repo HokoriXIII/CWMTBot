@@ -193,7 +193,7 @@ class Character:
     _needPetRequest = False
     _needStockRequest = False
     _needInvRequest = False
-    _needLevelUp = False
+    needLevelUp = False
 
     _BATTLE_TIME = [[time(3, 45), time(4, 5)],
                     [time(7, 45), time(8, 5)],
@@ -263,7 +263,7 @@ class Character:
         self.needProfile = False
         parsed_data = re.search(regexp.main_hero, profile)
         if parsed_data.group(1):
-            self._needLevelUp = True
+            self.needLevelUp = True
         self.castle = Castle(str(parsed_data.group(4)))
         self.name = str(parsed_data.group(5))
         self.prof = str(parsed_data.group(6))
