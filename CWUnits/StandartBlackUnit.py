@@ -113,11 +113,11 @@ class Module(BaseUnit):
             self._currentOrder = [CharacterAction.DEFENCE, self._character.castle]
         elif self._character.status == CharacterStatus.REST:
             if self._character.needLevelUp and self._character.config.autoLevelUp:
-                self._append_to_send_queue(self._cwBot, enums.Buttons.LEVEL_UP)
+                self._append_to_send_queue(self._cwBot, enums.Buttons.LEVEL_UP.value)
                 if self._character.config.levelUpAtk:
-                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_ATTACK)
+                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_ATTACK.value)
                 else:
-                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_DEFENCE)
+                    self._append_to_send_queue(self._cwBot, enums.Buttons.UP_DEFENCE.value)
                 self._character.needLevelUp = False
             if self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
                 self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
