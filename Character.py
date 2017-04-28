@@ -190,10 +190,13 @@ class Character:
 
     needProfile = False
     _needHeroRequest = False
-    _needPetRequest = False
+    needPetRequest = False
     _needStockRequest = False
     _needInvRequest = False
     needLevelUp = False
+    needFeedPet = False
+    needCleanPet = False
+    needPlayPet = False
 
     _BATTLE_TIME = [[time(3, 45), time(4, 5)],
                     [time(7, 45), time(8, 5)],
@@ -259,6 +262,30 @@ class Character:
         except ValueError:
             pass
 
+    def parse_pet(self, pet):
+        self.pet = Pet()
+        parsed_data = re.search(regexp.pet, pet)
+        if parsed_data.group(2):
+            self.pet.name = str(parsed_data.group(2))
+        self.pet.race = str(parsed_data.group(3))
+        self.pet.level = int(parsed_data.group(4))
+        self.pet.exp = int(parsed_data.group(5))
+        self.pet.needExp = int(parsed_data.group(6))
+        self.pet.playStatus = str(parsed_data.group(7))
+        self.pet.eatStatus = str(parsed_data.group(8))
+        self.pet.bathStatus = str(parsed_data.group(9))
+        self.pet.foodInStock = int(parsed_data.group(10))
+        self.pet.profit = str(parsed_data.group(11))
+        self.save_config_file()
+        if self.pet.playStatus != PetStatusText.EXCELLENT.value:
+            self.needPlayPet = True
+        if self.pet.eatStatus != PetStatusText.EXCELLENT.value:
+            self.needFeedPet = True
+        if self.pet.bathStatus != PetStatusText.EXCELLENT.value:
+            self.needCleanPet = True
+        self.needPetRequest = False
+        self.status = CharacterStatus.REST
+
     def parse_profile(self, profile):
         self.needProfile = False
         parsed_data = re.search(regexp.main_hero, profile)
@@ -283,7 +310,7 @@ class Character:
                 and int(parsed_data.group(17)) != 0:
             self._needInvRequest = True
         if parsed_data.group(19) and not self.pet or str(parsed_data.group(20)) != '😁':
-            self._needPetRequest = True
+            self.needPetRequest = True
         self.status = self._parse_status(parsed_data.group(23))
         self.timers.lastProfileUpdate = t.time() + randint(50, 3600)
         self.save_config_file()

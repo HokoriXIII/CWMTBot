@@ -81,7 +81,7 @@ class Quest(Enum):
 
 class CharacterStatus(Enum):
     UNDEFINED = 0
-    REST = [CharacterAction.WAIT]
+    REST = [CharacterAction.WAIT, 0]
     QUEST_LES = [CharacterAction.QUEST, Quest.LES]
     QUEST_CAVE = [CharacterAction.QUEST, Quest.CAVE]
     QUEST_COW = [CharacterAction.QUEST, Quest.COW]
@@ -109,6 +109,7 @@ class CharacterStatus(Enum):
     WAITING_DATA_INV = [CharacterAction.GET_DATA, DataRequests.INV]
     WAITING_DATA_STOCK = [CharacterAction.GET_DATA, DataRequests.STOCK]
     NEED_CAPTCHA = CharacterAction.CAPTCHA
+    WAITING_CAPTCHA = [CharacterAction.WAIT, 1]
 
 
 class Buttons(Enum):
@@ -116,3 +117,10 @@ class Buttons(Enum):
     LEVEL_UP = '/level_up'
     UP_ATTACK = '+1 ⚔Атака'
     UP_DEFENCE = '+1 🛡Защита'
+    FEED_PET = '🍼Покормить'
+    PLAY_PET = '⚽️Поиграть'
+    CLEAN_PET = '🛁Почистить'
+
+
+class PetStatusText(Enum):
+    EXCELLENT = 'отлично!'

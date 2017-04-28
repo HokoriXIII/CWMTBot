@@ -97,6 +97,7 @@ class Module(BaseUnit):
     def _action(self):
         if self._character.status == CharacterStatus.NEED_CAPTCHA:
             self._send_order([self._character.status.value, self._captchaMsg])
+            self._character.status = CharacterStatus.WAITING_CAPTCHA
         elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_CHARACTER:
             self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
             self._send_order(self._character.status.value)
@@ -119,11 +120,21 @@ class Module(BaseUnit):
                 else:
                     self._append_to_send_queue(self._cwBot, enums.Buttons.UP_DEFENCE.value)
                 self._character.needLevelUp = False
-            if self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
+            elif self._character.needPetRequest and self._character.status != CharacterStatus.WAITING_DATA_PET:
+                self._character.status = CharacterStatus.WAITING_DATA_PET
+                self._send_order(self._character.status.value)
+            elif self._character.needCleanPet:
+                self._append_to_send_queue(self._cwBot, enums.Buttons.CLEAN_PET.value)
+            elif self._character.needPlayPet:
+                self._append_to_send_queue(self._cwBot, enums.Buttons.PLAY_PET.value)
+            elif self._character.needFeedPet:
+                self._append_to_send_queue(self._cwBot, enums.Buttons.FEED_PET.value)
+            elif self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
                 self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
                 self._send_order(self._character.status.value)
             elif self._character.config.autoQuest and \
-                    (self._character.stamina >= 1 and self._character.config.defaultQuest == Quest.LES or
+                    (self._character.stamina >= 1 and (self._character.config.defaultQuest == Quest.LES or
+                                                       self._character.level == 1) or
                      self._character.stamina >= 2 and (self._character.config.defaultQuest == Quest.CAVE or
                                                        self._character.config.defaultQuest == Quest.COW)):
                 self._character.timers.lastQuest = t.time() + randint(10, 180)
@@ -136,6 +147,9 @@ class Module(BaseUnit):
         if re.search(regexp.main_hero, message):
             print('Получили профиль')
             self._character.parse_profile(message)
+        elif re.search(regexp.pet, message):
+            print('Получили пета')
+            self._character.parse_pet(message)
         elif re.search(regexp.captcha, message):
             print('Словили капчу =(')
             if re.search(regexp.captcha, message).group(1):
