@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from telethon import TelegramClient
 from Character import Character
 from telethon.tl.types import User, Channel, Chat
+from telethon.tl.functions.contacts import SearchRequest
 import config
 from multiprocessing import RLock
 from time import sleep
@@ -30,11 +31,30 @@ class BaseUnit(Thread):
         self._lock = RLock()
         self._dialogs = self._tgClient.get_dialogs(100)
         self._cwBot = self._find_contact_by_username(config.CWBot)
+        if not self._cwBot:
+            self._cwBot = self._tgClient.invoke(SearchRequest(config.CWBot, 1)).users[0]
+            self._tgClient.send_message(self._cwBot, '/start')
+            self._tgClient.send_message(self._cwBot, '🇬🇵Черный замок🇬🇵')
         self._captchaBot = self._find_contact_by_username(config.CaptchaBot)
+        if not self._captchaBot:
+            self._captchaBot = self._tgClient.invoke(SearchRequest(config.CaptchaBot, 1)).users[0]
+            self._tgClient.send_message(self._captchaBot, '/start')
         self._tradeBot = self._find_contact_by_username(config.TradeBot)
+        if not self._tradeBot:
+            self._tradeBot = self._tgClient.invoke(SearchRequest(config.TradeBot, 1)).users[0]
+            self._tgClient.send_message(self._tradeBot, '/start')
         self._orderBot = self._find_contact_by_username(self._character.config.orderBot)
+        if not self._orderBot:
+            self._orderBot = self._tgClient.invoke(SearchRequest(self._character.config.orderBot, 1)).users[0]
+            self._tgClient.send_message(self._orderBot, '/start')
         self._dataBot = self._find_contact_by_username(self._character.config.dataBot)
+        if not self._dataBot:
+            self._dataBot = self._tgClient.invoke(SearchRequest(self._character.config.dataBot, 1)).users[0]
+            self._tgClient.send_message(self._dataBot, '/start')
         self._admin = self._find_contact_by_username(self._character.config.admin)
+        if not self._admin:
+            self._admin = self._tgClient.invoke(SearchRequest(self._character.config.admin, 1)).users[0] if \
+                len(self._tgClient.invoke(SearchRequest(self._character.config.admin, 1)).users) else None
         self._orderGroup = self._find_contact_by_name(self._character.config.orderChat)
         if not self._admin:
             # Если юзера-админа не нашли, то админим сами
@@ -95,7 +115,9 @@ class BaseUnit(Thread):
                tgid == self._admin.id
 
     def _channel_in_list(self, channel):
-        return channel.title == self._orderGroup.title
+        if self._orderGroup:
+            return channel.title == self._orderGroup.title
+        return False
 
     def _append_to_send_queue(self, user, message):
         self._send_queue.append([user, message])
