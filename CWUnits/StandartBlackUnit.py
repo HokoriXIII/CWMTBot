@@ -125,21 +125,30 @@ class Module(BaseUnit):
                 self._send_order(self._character.status.value)
             elif self._character.needCleanPet:
                 self._append_to_send_queue(self._cwBot, enums.Buttons.CLEAN_PET.value)
+                self._character.needCleanPet = False
             elif self._character.needPlayPet:
                 self._append_to_send_queue(self._cwBot, enums.Buttons.PLAY_PET.value)
+                self._character.needPlayPet = False
             elif self._character.needFeedPet:
                 self._append_to_send_queue(self._cwBot, enums.Buttons.FEED_PET.value)
+                self._character.needFeedPet = False
             elif self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
                 self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
                 self._send_order(self._character.status.value)
             elif self._character.config.autoQuest and \
                     (self._character.stamina >= 1 and (self._character.config.defaultQuest == Quest.LES or
-                                                       self._character.level == 1) or
+                                                       self._character.level < 7 and
+                                                       self._character.config.defaultQuest == Quest.CAVE) or
                      self._character.stamina >= 2 and (self._character.config.defaultQuest == Quest.CAVE or
                                                        self._character.config.defaultQuest == Quest.COW)):
-                self._character.timers.lastQuest = t.time() + randint(10, 180)
-                self._character.status = CharacterStatus([CharacterAction.QUEST, self._character.config.defaultQuest])
-                self._character.stamina -= 1 if self._character.config.defaultQuest == Quest.LES else 2
+                self._character.timers.lastQuest = t.time()
+                if self._character.level < 7 and self._character.config.defaultQuest == Quest.CAVE:
+                    self._character.status = CharacterStatus([CharacterAction.QUEST, Quest.LES])
+                    self._character.stamina -= 1
+                else:
+                    self._character.status = CharacterStatus(
+                        [CharacterAction.QUEST, self._character.config.defaultQuest])
+                    self._character.stamina -= 1 if self._character.config.defaultQuest == Quest.LES else 2
                 self._character.save_config_file()
                 self._send_order(self._character.status.value)
     
@@ -163,7 +172,7 @@ class Module(BaseUnit):
         elif self._character.status in (CharacterStatus.QUEST_LES,
                                         CharacterStatus.QUEST_CAVE,
                                         CharacterStatus.QUEST_COW) \
-                and t.time() + 180 - self._character.timers.lastQuest > 60*5:
+                and t.time() + 15 - self._character.timers.lastQuest > 60*5:
             print('Вероятно вернулись с квеста')
             self._character.status = CharacterStatus.REST
 
