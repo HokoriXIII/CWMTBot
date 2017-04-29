@@ -6,8 +6,8 @@ from telethon.tl.functions.contacts import SearchRequest
 import config
 from multiprocessing import RLock
 from time import sleep
-from threading import Thread, Timer
-from random import randint, random
+from threading import Thread
+from random import random
 
 
 class BaseUnit(Thread):
@@ -66,15 +66,16 @@ class BaseUnit(Thread):
             self._receive(msg)
 
     def run(self):
-        Timer(1, self._worker).start()
+        Thread(target=self._worker, name='Action', args=()).start()
         while True:
             sleep(random() * 3 + 2)
             self._send()
 
     def _worker(self):
-        with self._lock:
-            self._action()
-        Timer(randint(5, 7), self._worker).start()
+        while True:
+            sleep(random() * 3 + 2)
+            with self._lock:
+                self._action()
 
     def _send(self):
         with self._lock:

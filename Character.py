@@ -309,7 +309,7 @@ class Character:
                 and str(parsed_data.group(16)) != '[-]' \
                 and int(parsed_data.group(17)) != 0:
             self._needInvRequest = True
-        if parsed_data.group(19) and (not self.pet or str(parsed_data.group(20)) != '😁'):
+        if parsed_data.group(19) and (not self.pet or str(parsed_data.group(22)) != '😁'):
             self.needPetRequest = True
         self.status = self._parse_status(parsed_data.group(23))
         self.timers.lastProfileUpdate = t.time() + randint(50, 3600)

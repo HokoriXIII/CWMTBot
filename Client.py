@@ -51,6 +51,7 @@ class Client(Thread):
         if self._character.config.module:
             self._module = importlib.import_module('CWUnits.' + self._character.config.module)
             self._worker = self._module.Module(self._tgClient, self._character)
+            self._worker.setName('Sender')
             self._worker.start()
 
     def _thread_auth(self):
