@@ -46,6 +46,8 @@ class Castle(Enum):
     BLUE = '🇪🇺'
     YELLOW = '🇻🇦'
     WHITE = '🇨🇾'
+    MINT = '🇲🇴'
+    DUSK = '🇰🇮'
     LES = '🌲Лесной форт'
     GORY = '⛰Горный форт'
 
@@ -59,6 +61,8 @@ class Icons(Enum):
     BLUE = '🇪🇺'
     YELLOW = '🇻🇦'
     WHITE = '🇨🇾'
+    MINT = '🇲🇴'
+    DUSK = '🇰🇮'
     LES = '🌲'
     GORY = '⛰'
 
