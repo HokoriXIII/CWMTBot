@@ -69,6 +69,7 @@ class Module(BaseUnit):
                                        get_input_peer(self._cwBot),
                                        '', ''))
         res = result.results[0]
+        #Замки
         if castle == Castle.BLACK:
             res = self._find_inline_by_title(result.results, 'Черный замок')
         elif castle == Castle.BLUE:
@@ -79,6 +80,10 @@ class Module(BaseUnit):
             res = self._find_inline_by_title(result.results, 'Желтый замок')
         elif castle == Castle.WHITE:
             res = self._find_inline_by_title(result.results, 'Белый замок')
+        elif castle == Castle.MINT:
+            res = self._find_inline_by_title(result.results, 'Мятный замок')
+        elif castle == Castle.DUSK:
+            res = self._find_inline_by_title(result.results, 'Сумрачный замок')
         elif castle == Castle.LES:
             res = self._find_inline_by_title(result.results, 'Лесной форт')
         elif castle == Castle.GORY:
@@ -98,8 +103,8 @@ class Module(BaseUnit):
         if self._character.status == CharacterStatus.NEED_CAPTCHA:
             self._send_order([self._character.status.value, self._captchaMsg])
             self._character.status = CharacterStatus.WAITING_CAPTCHA
-        elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_CHARACTER:
-            self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
+        elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_HERO:
+            self._character.status = CharacterStatus.WAITING_DATA_HERO
             self._send_order(self._character.status.value)
         elif self._character.time_to_sleep():
             self._send_order([CharacterAction.WAIT])
@@ -133,7 +138,7 @@ class Module(BaseUnit):
                 self._append_to_send_queue(self._cwBot, enums.Buttons.FEED_PET.value)
                 self._character.needFeedPet = False
             elif self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
-                self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
+                self._character.status = CharacterStatus.WAITING_DATA_HERO
                 self._send_order(self._character.status.value)
             elif self._character.config.autoQuest and \
                     (self._character.stamina >= 1 and (self._character.config.defaultQuest == Quest.LES or
