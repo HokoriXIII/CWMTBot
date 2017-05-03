@@ -348,9 +348,9 @@ class Character:
             return Castle.WHITE
         elif Icons.YELLOW.value in somestr:
             return Castle.YELLOW
-        elif Icons.YELLOW.value in somestr:
+        elif Icons.MINT.value in somestr:
             return Castle.MINT
-        elif Icons.YELLOW.value in somestr:
+        elif Icons.DUSK.value in somestr:
             return Castle.DUSK
         elif Icons.LES.value in somestr:
             return Castle.LES
