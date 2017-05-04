@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from enum import Enum
-
+#Unicode emoji from https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 
 class CharacterAction(Enum):
     WAIT = 0
@@ -32,7 +32,7 @@ class PetStatus(Enum):
 
 
 class DataRequests(Enum):
-    CHARACTER = '🏅Герой'
+    CHARACTER = '\U0001f3c5Герой'
     HERO = '/hero'
     PET = '/pet'
     STOCK = '/stock'
@@ -41,30 +41,30 @@ class DataRequests(Enum):
 
 class Castle(Enum):
     UNDEFINED = 0
-    BLACK = '🇬🇵'
-    RED = '🇮🇲'
-    BLUE = '🇪🇺'
-    YELLOW = '🇻🇦'
-    WHITE = '🇨🇾'
-    MINT = '🇲🇴'
-    DUSK = '🇰🇮'
-    LES = '🌲Лесной форт'
-    GORY = '⛰Горный форт'
+    BLACK = '\U0001f1ec\U0001f1f5'
+    RED = '\U0001f1ee\U0001f1f2'
+    BLUE = '\U0001f1ea\U0001f1fa'
+    YELLOW = '\U0001f1fb\U0001f1e6'
+    WHITE = '\U0001f1e8\U0001f1fe'
+    MINT = '\U0001F1F2\U0001F1F4'
+    DUSK = '\U0001F1F0\U0001F1EE'
+    LES = '\U0001f332Лесной форт'
+    GORY = '\u26f0Горный форт'
 
     def __str__(self):
         return self.value
 
 
 class Icons(Enum):
-    BLACK = '🇬🇵'
-    RED = '🇮🇲'
-    BLUE = '🇪🇺'
-    YELLOW = '🇻🇦'
-    WHITE = '🇨🇾'
-    MINT = '🇲🇴'
-    DUSK = '🇰🇮'
-    LES = '🌲'
-    GORY = '⛰'
+    BLACK = '\U0001f1ec\U0001f1f5'
+    RED = '\U0001f1ee\U0001f1f2'
+    BLUE = '\U0001f1ea\U0001f1fa'
+    YELLOW = '\U0001f1fb\U0001f1e6'
+    WHITE = '\U0001f1e8\U0001f1fe'
+    MINT = '\U0001F1F2\U0001F1F4'
+    DUSK = '\U0001F1F0\U0001F1EE'
+    LES = '\U0001f332'
+    GORY = '\u26f0'
 
 
 class StatusText(Enum):
@@ -78,9 +78,9 @@ class StatusText(Enum):
 
 
 class Quest(Enum):
-    LES = '🌲Лес'
-    CAVE = '🕸Пещера'
-    COW = '🐫ГРАБИТЬ КОРОВАНЫ'
+    LES = '\U0001f332Лес'
+    CAVE = '\U0001f578Пещера'
+    COW = '\U0001f42bГРАБИТЬ КОРОВАНЫ'
 
 
 class CharacterStatus(Enum):
@@ -121,10 +121,10 @@ class CharacterStatus(Enum):
 
 
 class Buttons(Enum):
-    QUEST = '🗺 Квесты'
+    QUEST = '\U0001f5fa Квесты'
     LEVEL_UP = '/level_up'
-    UP_ATTACK = '+1 ⚔Атака'
-    UP_DEFENCE = '+1 🛡Защита'
+    UP_ATTACK = '+1 \u2694Атака'
+    UP_DEFENCE = '+1 \U0001f6e1Защита'
     FEED_PET = '🍼Покормить'
     PLAY_PET = '⚽️Поиграть'
     CLEAN_PET = '🛁Почистить'
