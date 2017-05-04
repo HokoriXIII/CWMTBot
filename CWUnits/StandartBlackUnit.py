@@ -103,8 +103,8 @@ class Module(BaseUnit):
         if self._character.status == CharacterStatus.NEED_CAPTCHA:
             self._send_order([self._character.status.value, self._captchaMsg])
             self._character.status = CharacterStatus.WAITING_CAPTCHA
-        elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_HERO:
-            self._character.status = CharacterStatus.WAITING_DATA_HERO
+        elif self._character.needProfile and self._character.status != CharacterStatus.WAITING_DATA_CHARACTER:
+            self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
             self._send_order(self._character.status.value)
         elif self._character.time_to_sleep():
             self._send_order([CharacterAction.WAIT])
@@ -138,7 +138,7 @@ class Module(BaseUnit):
                 self._append_to_send_queue(self._cwBot, enums.Buttons.FEED_PET.value)
                 self._character.needFeedPet = False
             elif self._character.config.autoQuest and self._character.timers.lastProfileUpdate + 3600 < t.time():
-                self._character.status = CharacterStatus.WAITING_DATA_HERO
+                self._character.status = CharacterStatus.WAITING_DATA_CHARACTER
                 self._send_order(self._character.status.value)
             elif self._character.config.autoQuest and \
                     (self._character.stamina >= 1 and (self._character.config.defaultQuest == Quest.LES or
