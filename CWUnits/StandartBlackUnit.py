@@ -108,8 +108,11 @@ class Module(BaseUnit):
             self._send_order(self._character.status.value)
         elif self._character.time_to_sleep():
             self._send_order([CharacterAction.WAIT])
-        elif self._character.time_to_battle() and self._character.status.value != self._character.currentOrder and \
-                self._character.config.autoBattle:
+        elif self._character.time_to_battle() and self._character.status.value not in (self._character.currentOrder,
+                                                                                       CharacterStatus.QUEST_COW,
+                                                                                       CharacterStatus.QUEST_CAVE,
+                                                                                       CharacterStatus.QUEST_LES) \
+                and self._character.config.autoBattle:
             self._character.status = CharacterStatus(self._character.currentOrder)
             self._send_order(self._character.status.value)
         elif (self._character.status.value[0] == CharacterAction.ATTACK or

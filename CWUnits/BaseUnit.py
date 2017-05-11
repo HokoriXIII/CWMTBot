@@ -91,7 +91,7 @@ class BaseUnit(Thread):
 
     def _find_contact_by_username(self, username):
         for contact in self._dialogs[1]:
-            if type(contact) is not Chat and contact.username == username:
+            if (type(contact) is User or type(contact) is Channel) and contact.username == username:
                 return contact
         return None
 
