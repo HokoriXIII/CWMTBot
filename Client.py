@@ -68,20 +68,23 @@ class Client(Thread):
             self._code_lock.acquire()
             try:
                 self.login(self._code)
+                self._code_lock.release()
             except RPCError as e:
                 if e.password_required:
                     self._need_pass = True
+                    self._code_lock.release()
                     self._pass_lock.acquire()
                     self.login(password=self._pass)
 
     def pass_needed(self):
+        self._code_lock.acquire()
         return self._need_pass
 
     def get_session_name(self):
         return self._session
 
     def connect(self):
-        self._tgClient.connect(True)
+        self._tgClient.connect()
 
     def authorised(self):
         self._global_lock.acquire()

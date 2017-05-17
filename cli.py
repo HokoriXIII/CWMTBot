@@ -52,8 +52,8 @@ class CWCliBot:
                     pw = getpass(
                         'Нужен пароль от двухфакторной авторизации: ')
                     self.client.set_pass(pw)
-                    if self.client.authorised():
-                        code_ok = True
+                if self.client.authorised():
+                    code_ok = True
 
         print('Набрали первую космечискую...')
 
