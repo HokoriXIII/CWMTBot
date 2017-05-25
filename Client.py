@@ -70,15 +70,14 @@ class Client(Thread):
                 self._global_lock.acquire()
                 self.login(self._code)
                 self._code_lock.release()
-                self._global_lock.release()
             except RPCError as e:
                 if e.password_required:
                     self._need_pass = True
                     self._code_lock.release()
-                    self._global_lock.acquire()
                     self._pass_lock.acquire()
                     self.login(password=self._pass)
-                    self._global_lock.release()
+            finally:
+                self._global_lock.release()
 
     def pass_needed(self):
         self._code_lock.acquire()
