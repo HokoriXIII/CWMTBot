@@ -67,8 +67,10 @@ class Client(Thread):
             self.code_request()
             self._code_lock.acquire()
             try:
+                self._global_lock.acquire()
                 self.login(self._code)
                 self._code_lock.release()
+                self._global_lock.release()
             except RPCError as e:
                 if e.password_required:
                     self._need_pass = True
