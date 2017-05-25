@@ -4,7 +4,7 @@ from telethon import TelegramClient, RPCError
 from telethon.telegram_client import Session
 import config
 from Character import Character
-from multiprocessing import RLock, Lock
+from multiprocessing import RLock, Lock, Event
 from threading import Thread
 
 
@@ -12,6 +12,7 @@ class Client(Thread):
     _phone_lock = Lock()
     _code_lock = Lock()
     _pass_lock = Lock()
+    event_pass = Event()
 
     def __init__(self, session):
         super().__init__()
@@ -30,6 +31,7 @@ class Client(Thread):
         self._need_pass = False
         self._worker = None
         self._module = None
+        self.event_pass.clear()
 
     def set_phone(self, phone):
         self._phone = phone
@@ -65,22 +67,24 @@ class Client(Thread):
         while not self.authorised():
             self._phone_lock.acquire()
             self.code_request()
+            self._global_lock.acquire()
             self._code_lock.acquire()
             try:
-                self._global_lock.acquire()
                 self.login(self._code)
                 self._code_lock.release()
+                self.event_pass.set()
             except RPCError as e:
                 if e.password_required:
                     self._need_pass = True
-                    self._code_lock.release()
+                    self.event_pass.set()
                     self._pass_lock.acquire()
                     self.login(password=self._pass)
             finally:
                 self._global_lock.release()
 
     def pass_needed(self):
-        self._code_lock.acquire()
+        self.event_pass.wait()
+        self.event_pass.clear()
         return self._need_pass
 
     def get_session_name(self):
