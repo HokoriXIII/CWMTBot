@@ -49,7 +49,7 @@ class CWCliBot:
                 code = input('Пиши код: ')
                 self.client.set_code(code)
                 if self.client.pass_needed():
-                    pw = getpass(
+                    pw = input(
                         'Нужен пароль от двухфакторной авторизации: ')
                     self.client.set_pass(pw)
                 if self.client.authorised():
