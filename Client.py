@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import importlib
-from telethon import TelegramClient, RPCError
+import platform
+
+from telethon import TelegramClient
+from telethon.errors import RPCError
 from telethon.telegram_client import Session
 import config
 from Character import Character
@@ -61,6 +64,10 @@ class Client(Thread):
         session = Session.try_load_or_create_new(self._session)
         session.server_address = '149.154.167.50'
         session.port = 443
+        session.device_model = platform.node()
+        session.system_version = platform.system()
+        session.app_version = TelegramClient.__version__
+        session.lang_code = 'en'
         self._tgClient = TelegramClient(session, config.API_ID, config.API_HASH)
         self.connect()
         self._global_lock.release()
