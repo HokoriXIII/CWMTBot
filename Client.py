@@ -3,7 +3,7 @@ import importlib
 import platform
 
 from telethon import TelegramClient
-from telethon.errors import RPCError
+from telethon.errors import SessionPasswordNeededError
 from telethon.telegram_client import Session
 import config
 from Character import Character
@@ -80,12 +80,11 @@ class Client(Thread):
                 self.login(self._code)
                 self._code_lock.release()
                 self.event_pass.set()
-            except RPCError as e:
-                if e.password_required:
-                    self._need_pass = True
-                    self.event_pass.set()
-                    self._pass_lock.acquire()
-                    self.login(password=self._pass)
+            except SessionPasswordNeededError:
+                self._need_pass = True
+                self.event_pass.set()
+                self._pass_lock.acquire()
+                self.login(password=self._pass)
             finally:
                 self._global_lock.release()
 
