@@ -119,5 +119,5 @@ class Client(Thread):
                 res = self._tgClient.sign_in(self._phone, code)
                 return res
             return 0
-        except RPCError as e:
+        except SessionPasswordNeededError as e:
             raise e
