@@ -37,9 +37,8 @@ class Module(BaseUnit):
                                            '', ''))
             res = self._find_inline_by_title(result.results, 'Атака')
             self._tgClient.invoke(
-                SendInlineBotResultRequest(get_input_peer(self._cwBot),
-                                           utils.generate_random_long(),
-                                           result.query_id, res.id))
+                SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
+                                           query_id=result.query_id, id=res.id))
             self._send_castle(order[1])
         elif order[0] == CharacterAction.DEFENCE:
             result = self._tgClient.invoke(
@@ -48,9 +47,8 @@ class Module(BaseUnit):
                                            '', ''))
             res = self._find_inline_by_title(result.results, 'Защита')
             self._tgClient.invoke(
-                SendInlineBotResultRequest(get_input_peer(self._cwBot),
-                                           utils.generate_random_long(),
-                                           result.query_id, res.id))
+                SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
+                                           query_id=result.query_id, id=res.id))
             self._send_castle(order[1])
         elif order[0] == CharacterAction.QUEST:
             self._append_to_send_queue(self._cwBot, Buttons.QUEST.value)
@@ -89,9 +87,8 @@ class Module(BaseUnit):
         elif castle == Castle.GORY:
             res = self._find_inline_by_title(result.results, 'Горный форт')
         self._tgClient.invoke(
-            SendInlineBotResultRequest(get_input_peer(self._cwBot),
-                                       utils.generate_random_long(),
-                                       result.query_id, res.id))
+            SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
+                                       query_id=result.query_id, id=res.id))
 
     @staticmethod
     def _find_inline_by_title(inline_results, title):
