@@ -30,26 +30,12 @@ class Module(BaseUnit):
         self._append_to_send_queue(self._cwBot, captcha)
 
     def _send_order(self, order):
-        if order[0] == CharacterAction.ATTACK:
-            result = self._tgClient.invoke(
-                GetInlineBotResultsRequest(get_input_peer(self._orderBot),
-                                           get_input_peer(self._cwBot),
-                                           '', ''))
-            res = self._find_inline_by_title(result.results, 'Атака')
-            self._tgClient.invoke(
-                SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
-                                           query_id=result.query_id, id=res.id))
-            self._send_castle(order[1])
+        if order[0] in CharacterAction.ATTACK:
+            self._append_to_send_queue(self._cwBot, enums.Buttons.ATTACK.value)
+            self._append_to_send_queue(self._cwBot, order[1].value)
         elif order[0] == CharacterAction.DEFENCE:
-            result = self._tgClient.invoke(
-                GetInlineBotResultsRequest(get_input_peer(self._orderBot),
-                                           get_input_peer(self._cwBot),
-                                           '', ''))
-            res = self._find_inline_by_title(result.results, 'Защита')
-            self._tgClient.invoke(
-                SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
-                                           query_id=result.query_id, id=res.id))
-            self._send_castle(order[1])
+            self._append_to_send_queue(self._cwBot, enums.Buttons.DEFENCE.value)
+            self._append_to_send_queue(self._cwBot, order[1].value)
         elif order[0] == CharacterAction.QUEST:
             self._append_to_send_queue(self._cwBot, Buttons.QUEST.value)
             self._append_to_send_queue(self._cwBot, order[1].value)
@@ -57,38 +43,6 @@ class Module(BaseUnit):
             self._append_to_send_queue(self._captchaBot, order[1])
         elif order[0] == CharacterAction.GET_DATA:
             self._append_to_send_queue(self._cwBot, order[1].value)
-
-    def _send_castle(self, castle):
-        self._lock.release()
-        sleep(random() * 2 + 1)
-        self._lock.acquire()
-        result = self._tgClient.invoke(
-            GetInlineBotResultsRequest(get_input_peer(self._orderBot),
-                                       get_input_peer(self._cwBot),
-                                       '', ''))
-        res = result.results[0]
-        #Замки
-        if castle == Castle.BLACK:
-            res = self._find_inline_by_title(result.results, 'Черный замок')
-        elif castle == Castle.BLUE:
-            res = self._find_inline_by_title(result.results, 'Синий замок')
-        elif castle == Castle.RED:
-            res = self._find_inline_by_title(result.results, 'Красный замок')
-        elif castle == Castle.YELLOW:
-            res = self._find_inline_by_title(result.results, 'Желтый замок')
-        elif castle == Castle.WHITE:
-            res = self._find_inline_by_title(result.results, 'Белый замок')
-        elif castle == Castle.MINT:
-            res = self._find_inline_by_title(result.results, 'Мятный замок')
-        elif castle == Castle.DUSK:
-            res = self._find_inline_by_title(result.results, 'Сумрачный замок')
-        elif castle == Castle.LES:
-            res = self._find_inline_by_title(result.results, 'Лесной форт')
-        elif castle == Castle.GORY:
-            res = self._find_inline_by_title(result.results, 'Горный форт')
-        self._tgClient.invoke(
-            SendInlineBotResultRequest(peer=get_input_peer(self._cwBot),
-                                       query_id=result.query_id, id=res.id))
 
     @staticmethod
     def _find_inline_by_title(inline_results, title):

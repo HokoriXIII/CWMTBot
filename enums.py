@@ -128,6 +128,8 @@ class Buttons(Enum):
     FEED_PET = '🍼Покормить'
     PLAY_PET = '\u26BDПоиграть'
     CLEAN_PET = '🛁Почистить'
+    ATTACK = '\u2694 Атака'
+    DEFENCE = '\U0001f6e1 Защита'
 
 
 class PetStatusText(Enum):
