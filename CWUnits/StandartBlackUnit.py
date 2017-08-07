@@ -30,7 +30,7 @@ class Module(BaseUnit):
         self._append_to_send_queue(self._cwBot, captcha)
 
     def _send_order(self, order):
-        if order[0] in CharacterAction.ATTACK:
+        if order[0] == CharacterAction.ATTACK:
             self._append_to_send_queue(self._cwBot, enums.Buttons.ATTACK.value)
             self._append_to_send_queue(self._cwBot, order[1].value)
         elif order[0] == CharacterAction.DEFENCE:
