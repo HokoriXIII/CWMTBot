@@ -59,10 +59,11 @@ class Module(BaseUnit):
             self._send_order(self._character.status.value)
         elif self._character.time_to_sleep():
             self._send_order([CharacterAction.WAIT])
-        elif self._character.time_to_battle() and self._character.status.value not in (self._character.currentOrder,
-                                                                                       CharacterStatus.QUEST_COW,
-                                                                                       CharacterStatus.QUEST_CAVE,
-                                                                                       CharacterStatus.QUEST_LES) \
+        elif self._character.time_to_battle() and self._character.status.value \
+                not in (self._character.currentOrder,
+                        CharacterStatus.QUEST_COW.value,
+                        CharacterStatus.QUEST_CAVE.value,
+                        CharacterStatus.QUEST_LES.value) \
                 and self._character.config.autoBattle:
             self._character.status = CharacterStatus(self._character.currentOrder)
             self._send_order(self._character.status.value)
@@ -70,7 +71,7 @@ class Module(BaseUnit):
                 self._character.status.value[0] == CharacterAction.DEFENCE) and \
                 not self._character.time_to_battle():
             self._character.status = CharacterStatus.REST
-            self._currentOrder = [CharacterAction.DEFENCE, self._character.castle]
+            self._character.set_order(self._character.castle)
         elif self._character.status == CharacterStatus.REST:
             if self._character.needLevelUp and self._character.config.autoLevelUp:
                 self._append_to_send_queue(self._cwBot, enums.Buttons.LEVEL_UP.value)
