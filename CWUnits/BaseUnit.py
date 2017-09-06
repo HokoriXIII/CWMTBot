@@ -29,7 +29,7 @@ class BaseUnit(Thread):
         self._character = character
         self._send_queue = []
         self._lock = RLock()
-        self._dialogs = self._tgClient.get_dialogs(50)
+        self._dialogs = self._tgClient.get_dialogs(100)
         self._cwBot = self._find_contact_by_username(config.CWBot)
         if not self._cwBot:
             self._cwBot = self._tgClient.invoke(SearchRequest(config.CWBot, 1)).users[0]
@@ -62,8 +62,7 @@ class BaseUnit(Thread):
         self._tgClient.add_update_handler(self._locked_receive)
 
     def _locked_receive(self, msg):
-        with self._lock:
-            self._receive(msg)
+        self._receive(msg)
 
     def run(self):
         Thread(target=self._worker, name='Action', args=()).start()

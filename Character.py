@@ -57,6 +57,7 @@ class Pet:
 class Configuration:
     autoArena = False
     autoQuest = False
+    autoBuild = False
     defaultQuest = Quest.LES
     autoBattle = False
     autoDonate = False
@@ -84,7 +85,7 @@ class Configuration:
                      'autoTrade': self.autoTrade, 'autoLevelUp': self.autoLevelUp, 'levelUpAtk': self.levelUpAtk,
                      'defaultQuest': self.defaultQuest.value, 'orderBot': self.orderBot, 'orderChat': self.orderChat,
                      'dataBot': self.dataBot, 'admin': self.admin, 'module': self.module,
-                     'sleep_intervals': self.sleep_intervals}
+                     'sleep_intervals': self.sleep_intervals, 'autoBuild': self.autoBuild}
         return conf_dict
 
     @staticmethod
@@ -129,6 +130,8 @@ class Configuration:
             conf.module = conf_dict['module']
         if 'sleep_intervals' in conf_keys:
             conf.sleep_intervals = conf_dict['sleep_intervals']
+        if 'autoBuild' in conf_keys:
+            conf.autoBuild = conf_dict['autoBuild']
         return conf
 
 
@@ -187,6 +190,7 @@ class Character:
     timers = Timers()
     gold = 0
     donateGold = 0
+    actualBuild = []
 
     needProfile = False
     _needHeroRequest = False
@@ -254,11 +258,20 @@ class Character:
 
     def set_order(self, target):
         try:
+            if target[:2] == '⚓️':
+                target = Castle.SEA.value
+            elif target[:2] == '\U0001f332 ':
+                target = Castle.LES.value
+            elif target[:2] == '\u26f0 ':
+                target = Castle.GORY.value
+            else:
+                target = target[:2]
             if Castle(target) == self.castle or Castle(target) in self.alliance:
                 order = CharacterAction.DEFENCE
             else:
                 order = CharacterAction.ATTACK
             self.currentOrder = [order, Castle(target)]
+            print('Приказ установлен на {}'.format(target))
         except ValueError:
             pass
 
@@ -336,6 +349,14 @@ class Character:
             return CharacterStatus.QUEST_COW
         return CharacterStatus.UNDEFINED
 
+    def parse_build(self, msg):
+        parsed_data = re.findall(regexp.build, msg)
+        self.actualBuild.clear()
+        for tupl in parsed_data:
+            for item in tupl:
+                if item != '':
+                    self.actualBuild.append(item)
+
     @staticmethod
     def _find_castle(somestr):
         if Icons.BLACK.value in somestr:
@@ -365,7 +386,7 @@ class Character:
                      'arenaWins': self.arenaWins, 'arenaMax': self.arenaMax, 'arenaWalked': self.arenaWalked,
                      'castle': self.castle.value, 'alliance': self.alliance,
                      'pet': self.pet.serialize() if self.pet else None, 'config': self.config.serialize(),
-                     'timers': self.timers.serialize(), 'maxStamina': self.maxStamina}
+                     'timers': self.timers.serialize(), 'maxStamina': self.maxStamina, 'actualBuild': self.actualBuild}
         return json.dumps(char_dict, ensure_ascii=False, indent=4)
 
     def deserialize(self, json_str):
@@ -415,3 +436,5 @@ class Character:
             self.timers = Timers.deserialize(char_dict['timers'])
         if 'maxStamina' in keys:
             self.maxStamina = char_dict['maxStamina']
+        if 'actualBuild' in keys:
+            self.actualBuild = char_dict['actualBuild']

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from time import sleep
+
 from Client import Client
 from getpass import getpass
 from getopt import getopt
@@ -36,7 +38,7 @@ class CWCliBot:
         self.client.setName(session)
 
         self.client.start()
-
+        sleep(1)
         print('Взлетаем...')
 
         if not self.client.authorised():

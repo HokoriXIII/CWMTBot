@@ -12,6 +12,7 @@ class CharacterAction(Enum):
     TRADE = 6
     GET_DATA = 7
     CAPTCHA = 8
+    BUILD = 9
 
 
 class PetType(Enum):
@@ -50,6 +51,7 @@ class Castle(Enum):
     DUSK = '\U0001F1F0\U0001F1EE'
     LES = '\U0001f332Лесной форт'
     GORY = '\u26f0Горный форт'
+    SEA = '⚓️Морской форт'
 
     def __str__(self):
         return self.value
@@ -118,6 +120,20 @@ class CharacterStatus(Enum):
     WAITING_DATA_STOCK = [CharacterAction.GET_DATA, DataRequests.STOCK]
     NEED_CAPTCHA = CharacterAction.CAPTCHA
     WAITING_CAPTCHA = [CharacterAction.WAIT, 1]
+    BUILD_WALL = [CharacterAction.BUILD, '/build_wall']
+    REPAIR_WALL = [CharacterAction.BUILD, '/repair_wall']
+    BUILD_HQ = [CharacterAction.BUILD, '/build_hq']
+    REPAIR_HQ = [CharacterAction.BUILD, '/repair_hq']
+    BUILD_STASH = [CharacterAction.BUILD, '/build_stash']
+    REPAIR_STASH = [CharacterAction.BUILD, '/repair_stash']
+    BUILD_GLADIATORS = [CharacterAction.BUILD, '/build_gladiators']
+    REPAIR_GLADIATORS = [CharacterAction.BUILD, '/repair_gladiators']
+    BUILD_GOLDREWARD = [CharacterAction.BUILD, '/build_goldrewards2']
+    REPAIR_GOLDREWARD = [CharacterAction.BUILD, '/repair_goldrewards2']
+    BUILD_TEA = [CharacterAction.BUILD, '/build_teaparty']
+    REPAIR_TEA = [CharacterAction.BUILD, '/repair_teaparty']
+    BUILD_MONUMENT = [CharacterAction.BUILD, '/build_monument']
+    REPAIR_MONUMENT = [CharacterAction.BUILD, '/repair_monument']
 
 
 class Buttons(Enum):

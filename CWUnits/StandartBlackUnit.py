@@ -5,13 +5,14 @@ from telethon.tl.functions.messages import GetInlineBotResultsRequest, SendInlin
 from telethon.utils import get_input_peer
 import telethon.helpers as utils
 from enums import *
-from random import randint
+import random
 from Character import Character
-from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, UpdatesTg, UpdateNewChannelMessage, \
+from telethon.tl.types import UpdateShortChatMessage, UpdateShortMessage, Updates, UpdateNewChannelMessage, \
     UpdateNewMessage, Message
 import re
 import regexp
 import enums
+from datetime import datetime, timedelta
 from pytz import timezone
 import time as t
 from time import sleep
@@ -22,6 +23,7 @@ class Module(BaseUnit):
 
     _captchaMsg = ''
     _statusBeforeCaptcha = CharacterStatus.UNDEFINED
+    _next_build_try = datetime.now()
     
     def __init__(self, tg_client: TelegramClient, character: Character):
         super().__init__(tg_client, character)
@@ -43,6 +45,8 @@ class Module(BaseUnit):
             self._append_to_send_queue(self._captchaBot, order[1])
         elif order[0] == CharacterAction.GET_DATA:
             self._append_to_send_queue(self._cwBot, order[1].value)
+        elif order[0] == CharacterAction.BUILD:
+            self._append_to_send_queue(self._cwBot, order[1])
 
     @staticmethod
     def _find_inline_by_title(inline_results, title):
@@ -64,6 +68,7 @@ class Module(BaseUnit):
                         CharacterStatus.QUEST_COW.value,
                         CharacterStatus.QUEST_CAVE.value,
                         CharacterStatus.QUEST_LES.value) \
+                and self._character.status.value[0] not in [CharacterAction.BUILD] \
                 and self._character.config.autoBattle:
             self._character.status = CharacterStatus(self._character.currentOrder)
             self._send_order(self._character.status.value)
@@ -111,6 +116,12 @@ class Module(BaseUnit):
                     self._character.stamina -= 1 if self._character.config.defaultQuest == Quest.LES else 2
                 self._character.save_config_file()
                 self._send_order(self._character.status.value)
+            elif self._character.config.autoBuild and self._character.gold >= 5 and len(self._character.actualBuild) \
+                    and self._next_build_try < datetime.now():
+                self._character.status = CharacterStatus(
+                    [CharacterAction.BUILD, random.choice(self._character.actualBuild)])
+                self._character.save_config_file()
+                self._send_order(self._character.status.value)
     
     def parse_message(self, message):
         if re.search(regexp.main_hero, message):
@@ -137,7 +148,7 @@ class Module(BaseUnit):
             self._character.status = CharacterStatus.REST
 
     def _receive(self, msg):
-        if type(msg) is UpdatesTg:
+        if type(msg) is Updates:
             for upd in msg.updates:
                 if type(upd) is UpdateNewChannelMessage:
                     message = upd.message
@@ -162,12 +173,34 @@ class Module(BaseUnit):
                             if self._can_order_id(message.from_id):
                                 print('Получли приказ')
                                 self._character.set_order(message.message)
+                                if re.search(regexp.build, message.message):
+                                    print('Получили стройку')
+                                    self._character.parse_build(message.message)
                             elif message.from_id == self._cwBot.id:
                                 print('Получили сообщение от ChatWars')
                                 if re.search(regexp.main_hero, message.message):
                                     self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
                                                                                 message.id,
                                                                                 utils.generate_random_long()))
+                                if '/fight_' in message.message:
+                                    self._tgClient.invoke(ForwardMessageRequest(
+                                                              get_input_peer(self._dataBot),
+                                                              message.id,
+                                                              utils.generate_random_long()
+                                                          ))
+                                if 'Ты вернулся со стройки:' in message.message or 'Здание отремонтировано:' in message.message:
+                                    self._tgClient.invoke(ForwardMessageRequest(
+                                        get_input_peer(self._dataBot),
+                                        message.id,
+                                        utils.generate_random_long()
+                                    ))
+                                    print('Вернулись из стройки')
+                                    self._character.status = CharacterStatus.REST
+                                if 'В казне недостаточно ресурсов' in message.message:
+                                    print('Стройка не удалась')
+                                    self._character.status = CharacterStatus.REST
+                                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
+                                                                                      seconds=random.randint(0, 59))
                                 self.parse_message(message.message)
                             elif message.from_id == self._captchaBot.id:
                                 print('Получили сообщение от капчебота, пересылаем в ChatWars')
@@ -186,6 +219,32 @@ class Module(BaseUnit):
                 elif msg.user_id == self._captchaBot.id:
                     print('Получили сообщение от капчебота, пересылаем в ChatWars')
                     self._send_captcha(msg.message)
+            elif msg.from_id == self._cwBot.id:
+                print('Получили сообщение от ChatWars')
+                if re.search(regexp.main_hero, msg.message):
+                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
+                                                                msg.id,
+                                                                utils.generate_random_long()))
+                if '/fight_' in msg.message:
+                    self._tgClient.invoke(ForwardMessageRequest(
+                        get_input_peer(self._dataBot),
+                        msg.id,
+                        utils.generate_random_long()
+                    ))
+                if 'Ты вернулся со стройки:' in msg.message or 'Здание отремонтировано:' in msg.message:
+                    self._tgClient.invoke(ForwardMessageRequest(
+                        get_input_peer(self._dataBot),
+                        msg.id,
+                        utils.generate_random_long()
+                    ))
+                    print('Вернулись из стройки')
+                    self._character.status = CharacterStatus.REST
+                if 'В казне недостаточно ресурсов' in msg.message:
+                    print('Стройка не удалась')
+                    self._character.status = CharacterStatus.REST
+                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
+                                                                      seconds=random.randint(0, 59))
+                self.parse_message(msg.message)
 
         elif type(msg) is UpdateShortChatMessage:
             if msg.out:
@@ -195,3 +254,30 @@ class Module(BaseUnit):
                 print('[Chat #{}, user #{} sent {}]'.format(
                     msg.chat_id, msg.from_id,
                     msg.message))
+            elif msg.from_id == self._cwBot.id:
+                print('Получили сообщение от ChatWars')
+                if re.search(regexp.main_hero, msg.message):
+                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
+                                                                msg.id,
+                                                                utils.generate_random_long()))
+                if '/fight_' in msg.message:
+                    self._tgClient.invoke(ForwardMessageRequest(
+                        get_input_peer(self._dataBot),
+                        msg.id,
+                        utils.generate_random_long()
+                    ))
+                if 'Ты вернулся со стройки:' in msg.message or 'Здание отремонтировано:' in msg.message:
+                    self._tgClient.invoke(ForwardMessageRequest(
+                        get_input_peer(self._dataBot),
+                        msg.id,
+                        utils.generate_random_long()
+                    ))
+                    print('Вернулись из стройки')
+                    self._character.status = CharacterStatus.REST
+                if 'В казне недостаточно ресурсов' in msg.message:
+                    print('Стройка не удалась')
+                    self._character.status = CharacterStatus.REST
+                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
+                                                                      seconds=random.randint(0, 59))
+                self.parse_message(msg.message)
+

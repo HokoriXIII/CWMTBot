@@ -60,17 +60,16 @@ class Client(Thread):
             self._worker.start()
 
     def _thread_auth(self):
-        self._global_lock.acquire()
-        session = Session.try_load_or_create_new(self._session)
-        session.server_address = '149.154.167.50'
-        session.port = 443
-        session.device_model = platform.node()
-        session.system_version = platform.system()
-        session.app_version = TelegramClient.__version__
-        session.lang_code = 'en'
-        self._tgClient = TelegramClient(session, config.API_ID, config.API_HASH)
-        self.connect()
-        self._global_lock.release()
+        with self._global_lock:
+            session = Session.try_load_or_create_new(self._session)
+            session.server_address = '149.154.167.50'
+            session.port = 443
+            session.device_model = platform.node()
+            session.system_version = platform.system()
+            session.app_version = TelegramClient.__version__
+            session.lang_code = 'en'
+            self._tgClient = TelegramClient(session, config.API_ID, config.API_HASH)
+            self.connect()
         while not self.authorised():
             self._phone_lock.acquire()
             self.code_request()
