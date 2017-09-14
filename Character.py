@@ -257,15 +257,22 @@ class Character:
         return False
 
     def set_order(self, target):
+        if target == 'Стопэ':
+            self.status = CharacterStatus.PAUSED
+            return
+        elif target == 'Продолжай':
+            self.status = CharacterStatus.UNDEFINED
+            return
         try:
-            if target[:2] == '⚓️':
-                target = Castle.SEA.value
-            elif target[:2] == '\U0001f332 ':
-                target = Castle.LES.value
-            elif target[:2] == '\u26f0 ':
-                target = Castle.GORY.value
-            else:
-                target = target[:2]
+            if '❗️  Внимание ❗️' in target:
+                if target[:2] == '⚓️':
+                    target = Castle.SEA.value
+                elif target[:2] == '\U0001f332 ':
+                    target = Castle.LES.value
+                elif target[:2] == '\u26f0 ':
+                    target = Castle.GORY.value
+                else:
+                    target = target[:2]
             if Castle(target) == self.castle or Castle(target) in self.alliance:
                 order = CharacterAction.DEFENCE
             else:
@@ -347,6 +354,8 @@ class Character:
             return CharacterStatus.QUEST_CAVE
         elif StatusText.COW.value in status:
             return CharacterStatus.QUEST_COW
+        elif '🔨' in status or '🚧' in status:
+            return CharacterStatus.BUILD_UNDEFINED
         return CharacterStatus.UNDEFINED
 
     def parse_build(self, msg):

@@ -55,6 +55,8 @@ class Module(BaseUnit):
                 return res
 
     def _action(self):
+        if self._character.status == CharacterStatus.PAUSED:
+            return
         if self._character.status == CharacterStatus.NEED_CAPTCHA:
             self._send_order([self._character.status.value, self._captchaMsg])
             self._character.status = CharacterStatus.WAITING_CAPTCHA
@@ -76,7 +78,8 @@ class Module(BaseUnit):
                 self._character.status.value[0] == CharacterAction.DEFENCE) and \
                 not self._character.time_to_battle():
             self._character.status = CharacterStatus.REST
-            self._character.set_order(self._character.castle)
+            self._append_to_send_queue(self._cwBot, '/report')
+            self._character.set_order(self._character.castle.value)
         elif self._character.status == CharacterStatus.REST:
             if self._character.needLevelUp and self._character.config.autoLevelUp:
                 self._append_to_send_queue(self._cwBot, enums.Buttons.LEVEL_UP.value)
@@ -147,6 +150,43 @@ class Module(BaseUnit):
             print('Вероятно вернулись с квеста')
             self._character.status = CharacterStatus.REST
 
+    def _on_cw_msg(self, message):
+        print('Получили сообщение от ChatWars')
+        if self._character.status == CharacterStatus.PAUSED:
+            return
+        if re.search(regexp.main_hero, message.message):
+            self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
+                                                        message.id,
+                                                        utils.generate_random_long()))
+        if '/fight_' in message.message:
+            self._tgClient.invoke(ForwardMessageRequest(
+                get_input_peer(self._dataBot),
+                message.id,
+                utils.generate_random_long()
+            ))
+        if 'Ты вернулся со стройки:' in message.message or 'Здание отремонтировано:' in message.message:
+            self._tgClient.invoke(ForwardMessageRequest(
+                get_input_peer(self._dataBot),
+                message.id,
+                utils.generate_random_long()
+            ))
+            print('Вернулись из стройки')
+            self._next_build_try = datetime.now() + timedelta(minutes=random.randint(0, 2),
+                                                              seconds=random.randint(0, 59))
+            self._character.status = CharacterStatus.REST
+        if 'В казне недостаточно ресурсов' in message.message:
+            print('Стройка не удалась')
+            self._character.status = CharacterStatus.REST
+            self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
+                                                              seconds=random.randint(0, 59))
+        if 'Твои результаты в бою:' in message.message:
+            self._tgClient.invoke(ForwardMessageRequest(
+                get_input_peer(self._dataBot),
+                message.id,
+                utils.generate_random_long()
+            ))
+        self.parse_message(message.message)
+
     def _receive(self, msg):
         if type(msg) is Updates:
             for upd in msg.updates:
@@ -162,7 +202,7 @@ class Module(BaseUnit):
                         else:
                             if channel and self._channel_in_list(channel):
                                 if self._can_order_id(message.from_id):
-                                    self._character.set_order(message.message)
+                                    Thread(target=self._order_recieved, name='on_cw_msg', args=(message,)).start()
                 elif type(upd) is UpdateNewMessage:
                     message = upd.message
                     if type(message) is Message:
@@ -171,113 +211,49 @@ class Module(BaseUnit):
                                 self._character.set_order(message.message)
                         elif self._id_in_list(message.from_id):
                             if self._can_order_id(message.from_id):
-                                print('Получли приказ')
-                                self._character.set_order(message.message)
-                                if re.search(regexp.build, message.message):
-                                    print('Получили стройку')
-                                    self._character.parse_build(message.message)
+                                Thread(target=self._order_recieved, name='on_cw_msg', args=(message,)).start()
                             elif message.from_id == self._cwBot.id:
-                                print('Получили сообщение от ChatWars')
-                                if re.search(regexp.main_hero, message.message):
-                                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
-                                                                                message.id,
-                                                                                utils.generate_random_long()))
-                                if '/fight_' in message.message:
-                                    self._tgClient.invoke(ForwardMessageRequest(
-                                                              get_input_peer(self._dataBot),
-                                                              message.id,
-                                                              utils.generate_random_long()
-                                                          ))
-                                if 'Ты вернулся со стройки:' in message.message or 'Здание отремонтировано:' in message.message:
-                                    self._tgClient.invoke(ForwardMessageRequest(
-                                        get_input_peer(self._dataBot),
-                                        message.id,
-                                        utils.generate_random_long()
-                                    ))
-                                    print('Вернулись из стройки')
-                                    self._character.status = CharacterStatus.REST
-                                if 'В казне недостаточно ресурсов' in message.message:
-                                    print('Стройка не удалась')
-                                    self._character.status = CharacterStatus.REST
-                                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
-                                                                                      seconds=random.randint(0, 59))
-                                self.parse_message(message.message)
+                                Thread(target=self._on_cw_msg, name='on_cw_msg', args=(message,)).start()
                             elif message.from_id == self._captchaBot.id:
                                 print('Получили сообщение от капчебота, пересылаем в ChatWars')
                                 self._send_captcha(message.message)
+                            elif message.from_id == self._dataBot.id:
+                                if re.search(regexp.build, message.message):
+                                    print('Получили стройку')
+                                    self._character.parse_build(message.message)
         elif type(msg) is UpdateShortMessage:
             if msg.out:
                 print('You sent {} to user #{}'.format(msg.message,
                                                        msg.user_id))
             elif self._id_in_list(msg.user_id):
                 if self._can_order_id(msg.user_id):
-                    print('Получли приказ')
-                    self._character.set_order(msg.message)
+                    Thread(target=self._order_recieved, name='on_cw_msg', args=(msg,)).start()
                 elif msg.user_id == self._cwBot.id:
-                    print('Получили сообщение от ChatWars')
-                    self.parse_message(msg.message)
+                    Thread(target=self._on_cw_msg, name='on_cw_msg', args=(msg,)).start()
                 elif msg.user_id == self._captchaBot.id:
                     print('Получили сообщение от капчебота, пересылаем в ChatWars')
                     self._send_captcha(msg.message)
-            elif msg.from_id == self._cwBot.id:
-                print('Получили сообщение от ChatWars')
-                if re.search(regexp.main_hero, msg.message):
-                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
-                                                                msg.id,
-                                                                utils.generate_random_long()))
-                if '/fight_' in msg.message:
-                    self._tgClient.invoke(ForwardMessageRequest(
-                        get_input_peer(self._dataBot),
-                        msg.id,
-                        utils.generate_random_long()
-                    ))
-                if 'Ты вернулся со стройки:' in msg.message or 'Здание отремонтировано:' in msg.message:
-                    self._tgClient.invoke(ForwardMessageRequest(
-                        get_input_peer(self._dataBot),
-                        msg.id,
-                        utils.generate_random_long()
-                    ))
-                    print('Вернулись из стройки')
-                    self._character.status = CharacterStatus.REST
-                if 'В казне недостаточно ресурсов' in msg.message:
-                    print('Стройка не удалась')
-                    self._character.status = CharacterStatus.REST
-                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
-                                                                      seconds=random.randint(0, 59))
-                self.parse_message(msg.message)
 
         elif type(msg) is UpdateShortChatMessage:
             if msg.out:
                 print('You sent {} to chat #{}'.format(msg.message,
                                                        msg.chat_id))
             elif self._id_in_list(msg.from_id):
-                print('[Chat #{}, user #{} sent {}]'.format(
-                    msg.chat_id, msg.from_id,
-                    msg.message))
-            elif msg.from_id == self._cwBot.id:
-                print('Получили сообщение от ChatWars')
-                if re.search(regexp.main_hero, msg.message):
-                    self._tgClient.invoke(ForwardMessageRequest(get_input_peer(self._dataBot),
-                                                                msg.id,
-                                                                utils.generate_random_long()))
-                if '/fight_' in msg.message:
-                    self._tgClient.invoke(ForwardMessageRequest(
-                        get_input_peer(self._dataBot),
-                        msg.id,
-                        utils.generate_random_long()
-                    ))
-                if 'Ты вернулся со стройки:' in msg.message or 'Здание отремонтировано:' in msg.message:
-                    self._tgClient.invoke(ForwardMessageRequest(
-                        get_input_peer(self._dataBot),
-                        msg.id,
-                        utils.generate_random_long()
-                    ))
-                    print('Вернулись из стройки')
-                    self._character.status = CharacterStatus.REST
-                if 'В казне недостаточно ресурсов' in msg.message:
-                    print('Стройка не удалась')
-                    self._character.status = CharacterStatus.REST
-                    self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
-                                                                      seconds=random.randint(0, 59))
-                self.parse_message(msg.message)
+                print('[Chat #{}, user #{} sent {}]'.format(msg.chat_id, msg.from_id, msg.message))
+                if msg.from_id == self._cwBot.id:
+                    Thread(target=self._on_cw_msg, name='on_cw_msg', args=(msg,)).start()
 
+    def _order_recieved(self, message):
+        print('Получли приказ')
+        if re.search(regexp.build, message.message):
+            print('Получили стройку')
+            self._character.parse_build(message.message)
+        elif message.message.upper() == 'Стопэ'.upper():
+            self._character.status = CharacterStatus.PAUSED
+            self._tgClient.send_message(self._admin, 'Сделаль')
+        elif message.message.upper() == 'Продолжай'.upper():
+            self._character.status = CharacterStatus.UNDEFINED
+            self._character.needProfile = True
+            self._tgClient.send_message(self._admin, 'Сделаль')
+        else:
+            self._character.set_order(message.message)

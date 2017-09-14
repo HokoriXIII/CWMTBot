@@ -86,7 +86,7 @@ class Quest(Enum):
 
 
 class CharacterStatus(Enum):
-    UNDEFINED = 0
+    UNDEFINED = [0]
     REST = [CharacterAction.WAIT, 0]
     QUEST_LES = [CharacterAction.QUEST, Quest.LES]
     QUEST_CAVE = [CharacterAction.QUEST, Quest.CAVE]
@@ -134,6 +134,8 @@ class CharacterStatus(Enum):
     REPAIR_TEA = [CharacterAction.BUILD, '/repair_teaparty']
     BUILD_MONUMENT = [CharacterAction.BUILD, '/build_monument']
     REPAIR_MONUMENT = [CharacterAction.BUILD, '/repair_monument']
+    BUILD_UNDEFINED = [CharacterAction.BUILD, '0']
+    PAUSED = [-1]
 
 
 class Buttons(Enum):
