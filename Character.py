@@ -278,7 +278,7 @@ class Character:
             else:
                 order = CharacterAction.ATTACK
             self.currentOrder = [order, Castle(target)]
-            print('Приказ установлен на {}'.format(target))
+            print(str(datetime.now()) + ': ' + 'Приказ установлен на {}'.format(target))
         except ValueError:
             pass
 

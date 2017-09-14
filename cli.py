@@ -6,6 +6,7 @@ from getpass import getpass
 from getopt import getopt
 import shutil
 import sys
+from datetime import datetime
 
 # Get the (current) number of lines in the terminal
 cols, rows = shutil.get_terminal_size()
@@ -13,11 +14,11 @@ cols, rows = shutil.get_terminal_size()
 
 def print_title(title):
     # Clear previous window
-    print('\n')
+    print(str(datetime.now()) + ': ' + '\n')
     available_cols = cols - 2  # -2 since we omit '┌' and '┐'
-    print('┌{}┐'.format('─' * available_cols))
-    print('│{}│'.format(title.center(available_cols)))
-    print('└{}┘'.format('─' * available_cols))
+    print(str(datetime.now()) + ': ' + '┌{}┐'.format('─' * available_cols))
+    print(str(datetime.now()) + ': ' + '│{}│'.format(title.center(available_cols)))
+    print(str(datetime.now()) + ': ' + '└{}┘'.format('─' * available_cols))
 
 
 class CWCliBot:
@@ -39,7 +40,7 @@ class CWCliBot:
 
         self.client.start()
         sleep(1)
-        print('Взлетаем...')
+        print(str(datetime.now()) + ': ' + 'Взлетаем...')
 
         if not self.client.authorised():
             phone = input('Нужен телефон: ')
@@ -57,7 +58,7 @@ class CWCliBot:
                 if self.client.authorised():
                     code_ok = True
 
-        print('Набрали первую космечискую...')
+        print(str(datetime.now()) + ': ' + 'Набрали первую космечискую...')
 
 
 if __name__ == '__main__':

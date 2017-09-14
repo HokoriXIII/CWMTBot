@@ -128,30 +128,30 @@ class Module(BaseUnit):
     
     def parse_message(self, message):
         if re.search(regexp.main_hero, message):
-            print('Получили профиль')
+            print(str(datetime.now()) + ': ' + 'Получили профиль')
             self._character.parse_profile(message)
         elif re.search(regexp.pet, message):
-            print('Получили пета')
+            print(str(datetime.now()) + ': ' + 'Получили пета')
             self._character.parse_pet(message)
         elif re.search(regexp.captcha, message):
-            print('Словили капчу =(')
+            print(str(datetime.now()) + ': ' + 'Словили капчу =(')
             if re.search(regexp.captcha, message).group(1):
                 self._captchaMsg = str(re.search(regexp.captcha, message).group(1))
             self._statusBeforeCaptcha = self._character.status
             self._character.status = CharacterStatus.NEED_CAPTCHA
         elif re.search(regexp.uncaptcha, message):
-            print('Решили капчу =)')
+            print(str(datetime.now()) + ': ' + 'Решили капчу =)')
             self._captchaMsg = ''
             self._character.status = self._statusBeforeCaptcha
         elif self._character.status in (CharacterStatus.QUEST_LES,
                                         CharacterStatus.QUEST_CAVE,
                                         CharacterStatus.QUEST_COW) \
                 and t.time() + 15 - self._character.timers.lastQuest > 60*5:
-            print('Вероятно вернулись с квеста')
+            print(str(datetime.now()) + ': ' + 'Вероятно вернулись с квеста')
             self._character.status = CharacterStatus.REST
 
     def _on_cw_msg(self, message):
-        print('Получили сообщение от ChatWars')
+        print(str(datetime.now()) + ': ' + 'Получили сообщение от ChatWars')
         if self._character.status == CharacterStatus.PAUSED:
             return
         if re.search(regexp.main_hero, message.message):
@@ -170,12 +170,12 @@ class Module(BaseUnit):
                 message.id,
                 utils.generate_random_long()
             ))
-            print('Вернулись из стройки')
+            print(str(datetime.now()) + ': ' + 'Вернулись из стройки')
             self._next_build_try = datetime.now() + timedelta(minutes=random.randint(0, 2),
                                                               seconds=random.randint(0, 59))
             self._character.status = CharacterStatus.REST
         if 'В казне недостаточно ресурсов' in message.message:
-            print('Стройка не удалась')
+            print(str(datetime.now()) + ': ' + 'Стройка не удалась')
             self._character.status = CharacterStatus.REST
             self._next_build_try = datetime.now() + timedelta(minutes=random.randint(1, 4),
                                                               seconds=random.randint(0, 59))
@@ -215,15 +215,15 @@ class Module(BaseUnit):
                             elif message.from_id == self._cwBot.id:
                                 Thread(target=self._on_cw_msg, name='on_cw_msg', args=(message,)).start()
                             elif message.from_id == self._captchaBot.id:
-                                print('Получили сообщение от капчебота, пересылаем в ChatWars')
+                                print(str(datetime.now()) + ': ' + 'Получили сообщение от капчебота, пересылаем в ChatWars')
                                 self._send_captcha(message.message)
                             elif message.from_id == self._dataBot.id:
                                 if re.search(regexp.build, message.message):
-                                    print('Получили стройку')
+                                    print(str(datetime.now()) + ': ' + 'Получили стройку')
                                     self._character.parse_build(message.message)
         elif type(msg) is UpdateShortMessage:
             if msg.out:
-                print('You sent {} to user #{}'.format(msg.message,
+                print(str(datetime.now()) + ': ' + 'You sent {} to user #{}'.format(msg.message,
                                                        msg.user_id))
             elif self._id_in_list(msg.user_id):
                 if self._can_order_id(msg.user_id):
@@ -231,22 +231,22 @@ class Module(BaseUnit):
                 elif msg.user_id == self._cwBot.id:
                     Thread(target=self._on_cw_msg, name='on_cw_msg', args=(msg,)).start()
                 elif msg.user_id == self._captchaBot.id:
-                    print('Получили сообщение от капчебота, пересылаем в ChatWars')
+                    print(str(datetime.now()) + ': ' + 'Получили сообщение от капчебота, пересылаем в ChatWars')
                     self._send_captcha(msg.message)
 
         elif type(msg) is UpdateShortChatMessage:
             if msg.out:
-                print('You sent {} to chat #{}'.format(msg.message,
+                print(str(datetime.now()) + ': ' + 'You sent {} to chat #{}'.format(msg.message,
                                                        msg.chat_id))
             elif self._id_in_list(msg.from_id):
-                print('[Chat #{}, user #{} sent {}]'.format(msg.chat_id, msg.from_id, msg.message))
+                print(str(datetime.now()) + ': ' + '[Chat #{}, user #{} sent {}]'.format(msg.chat_id, msg.from_id, msg.message))
                 if msg.from_id == self._cwBot.id:
                     Thread(target=self._on_cw_msg, name='on_cw_msg', args=(msg,)).start()
 
     def _order_recieved(self, message):
-        print('Получли приказ')
+        print(str(datetime.now()) + ': ' + 'Получли приказ')
         if re.search(regexp.build, message.message):
-            print('Получили стройку')
+            print(str(datetime.now()) + ': ' + 'Получили стройку')
             self._character.parse_build(message.message)
         elif message.message.upper() == 'Стопэ'.upper():
             self._character.status = CharacterStatus.PAUSED
