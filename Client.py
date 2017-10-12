@@ -4,7 +4,7 @@ import platform
 
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError
-from telethon.telegram_client import Session
+from telethon.tl.session import Session
 import config
 from Character import Character
 from multiprocessing import RLock, Lock, Event
